@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>GAS Graphviz</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- viz.js + worker (full.render.js includes all engines) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
+
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 16px; }
+      h2 { margin: 0 0 .5rem; }
+      #graph { width: 100%; max-width: 100%; overflow: auto; border: 1px solid #ccc; border-radius: 6px; background: Canvas; }
+      #zoomInner { transform-origin: 0 0; display: inline-block; }
+      .controls { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
+      .controls input[type="range"] { width: 150px; }
+      .controls button, .controls select { padding: .35rem .6rem; border: 1px solid #bbb; background: #f8f8f8; border-radius: 6px; cursor: pointer; }
+      .controls button:active { transform: translateY(1px); }
+      label { display: inline-flex; align-items: center; gap: .35rem; }
+      .muted { color: #666; font-size: .9em; }
+      .badge { padding: .15rem .45rem; border: 1px solid #bbb; border-radius: 999px; font-size: .85em; }
+      .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+    </style>
+  </head>
+  <body>
+    <h2>Google Apps Script Graphviz Demo</h2>
+
+    <!-- 縮放 + 版面配置控制列 -->
+    <div class="controls row">
+      <label>縮放：
+        <input id="zoomRange" type="range" min="25" max="400" step="5" value="100" />
+      </label>
+      <span id="zoomLabel">100%</span>
+      <button id="zoomOut">−</button>
+      <button id="zoomIn">＋</button>
+      <button id="fitWidth">適合寬度</button>
+      <button id="resetZoom">重設</button>
+      <span class="muted">(Ctrl+滾輪可縮放)</span>
+
+      <label style="margin-left:1rem">Layout：
+        <select id="layoutSelect">
+          <option value="dot">dot（階層式）</option>
+          <option value="neato">neato（力導向）</option>
+          <option value="fdp">fdp（力導向）</option>
+          <!-- <option value="sfdp">sfdp（大圖力導向）</option> -->
+          <option value="twopi">twopi（放射狀）</option>
+          <option value="circo">circo（圓環）</option>
+          <option value="osage">osage（叢集）</option>
+          <option value="patchwork">patchwork（樹圖）</option>
+        </select>
+      </label>
+      <label style="margin-left:.75rem">rankdir：
+        <select id="rankdirSelect">
+          <option value="TB">TB（上→下）</option>
+          <option value="LR">LR（左→右）</option>
+          <option value="BT">BT（下→上）</option>
+          <option value="RL">RL（右→左）</option>
+        </select>
+      </label>
+      <span id="engineBadge" class="badge">engine: dot</span>
+    </div>
+
+    <!-- 字體大小控制列 -->
+    <div class="controls row">
+      <label>字體大小：
+        <input id="fontRange" type="range" min="8" max="40" step="1" value="14" />
+      </label>
+      <span id="fontLabel">14px</span>
+      <button id="fontSmaller">字小</button>
+      <button id="fontBigger">字大</button>
+      <button id="resetFont">重設字體</button>
+    </div>
+
+    <div id="graph">
+      <div id="zoomInner"></div>
+    </div>
+
+    <script>
+      const state = {
+        scalePct: 100,
+        origW: null,
+        origH: null,
+        fontSize: 14,
+        origFontSize: 14,
+        engine: localStorage.getItem("gv_engine") || "dot",
+        rankdir: localStorage.getItem("gv_rankdir") || "TB",
+        dot: ""
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const zoomInner = $("zoomInner");
+      const graph = $("graph");
+      const zoomRange = $("zoomRange");
+      const zoomLabel = $("zoomLabel");
+      const fontRange = $("fontRange");
+      const fontLabel = $("fontLabel");
+      const layoutSelect = $("layoutSelect");
+      const engineBadge = $("engineBadge");
+      const rankdirSelect = $("rankdirSelect");
+
+      if (layoutSelect) layoutSelect.value = state.engine;
+      if (rankdirSelect) rankdirSelect.value = state.rankdir;
+      if (engineBadge) engineBadge.textContent = `engine: ${state.engine}`;
+
+      // --- 建立/重建 Viz 實例（避免 worker 卡住） ---
+      let viz;
+      function newViz() {
+        try { viz && viz.terminate && viz.terminate(); } catch (_) {}
+        viz = new Viz();
+      }
+      newViz();
+
+      // --- 整體縮放 ---
+      function applyZoom(pct) {
+        state.scalePct = Math.max(10, Math.min(800, pct));
+        const scale = state.scalePct / 100;
+        zoomInner.style.transform = `scale(${scale})`;
+        zoomLabel.textContent = `${state.scalePct}%`;
+        zoomRange.value = String(state.scalePct);
+      }
+      function fitToWidth() {
+        if (!state.origW) return;
+        const containerWidth = graph.clientWidth;
+        const scale = containerWidth / state.origW;
+        applyZoom(Math.round(scale * 100));
+      }
+      function resetZoom() {
+        applyZoom(100);
+        graph.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+      }
+
+      // --- 字體大小 ---
+      function applyFontSize(px) {
+        state.fontSize = Math.max(6, Math.min(80, px));
+        const texts = zoomInner.querySelectorAll("text");
+        texts.forEach(t => t.setAttribute("font-size", state.fontSize));
+        fontLabel.textContent = `${state.fontSize}px`;
+        fontRange.value = state.fontSize;
+      }
+      function resetFont() { applyFontSize(state.origFontSize); }
+
+      // --- rankdir 注入（僅 dot 引擎有效） ---
+      function applyRankdirToDot(src, dir) {
+        try {
+          if (!src) return src;
+          // 移除既有 rankdir 設定
+          let cleaned = src.replace(/\brankdir\s*=\s*"?[A-Z]{2}"?\s*;?/gi, "");
+          // 在第一個 { 之後注入 rankdir
+          const i = cleaned.indexOf('{');
+          if (i !== -1) {
+            return cleaned.slice(0, i + 1) + `\n  rankdir=${dir};` + cleaned.slice(i + 1);
+          }
+          return `digraph G { rankdir=${dir}; ${cleaned} }`;
+        } catch (e) {
+          console.warn('applyRankdirToDot failed, fallback raw DOT');
+          return src;
+        }
+      }
+
+      // --- 依指定引擎渲染 DOT ---
+      async function renderGraph() {
+        if (!state.dot) return;
+        try {
+          console.log(`[render] engine=%s`, state.engine);
+          const src = state.dot;
+          const dotToUse = (state.engine === 'dot') ? applyRankdirToDot(src, state.rankdir) : src;
+          const svg = await viz.renderSVGElement(dotToUse, { engine: state.engine });
+
+          const rawW = svg.getAttribute("width");
+          const rawH = svg.getAttribute("height");
+          const origW = rawW ? parseFloat(rawW) : (svg.viewBox?.baseVal?.width || svg.getBBox().width);
+          const origH = rawH ? parseFloat(rawH) : (svg.viewBox?.baseVal?.height || svg.getBBox().height);
+          state.origW = origW; state.origH = origH;
+
+          const firstText = svg.querySelector("text");
+          if (firstText && state.origFontSize === 14 && state.fontSize === 14) {
+            state.origFontSize = parseInt(firstText.getAttribute("font-size")) || 14;
+            state.fontSize = state.origFontSize;
+            fontRange.value = state.origFontSize;
+            fontLabel.textContent = `${state.origFontSize}px`;
+          }
+
+          zoomInner.style.width = origW + "px";
+          zoomInner.style.height = origH + "px";
+
+          svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+          if (!svg.getAttribute("viewBox")) svg.setAttribute("viewBox", `0 0 ${origW} ${origH}`);
+          svg.removeAttribute("width");
+          svg.removeAttribute("height");
+
+          zoomInner.innerHTML = "";
+          zoomInner.appendChild(svg);
+
+          applyZoom(state.scalePct);
+          applyFontSize(state.fontSize);
+        } catch (err) {
+          console.error("render error:", err);
+          // worker 可能壞掉，重建後再試一次
+          newViz();
+          try {
+            const src = state.dot;
+          const dotToUse = (state.engine === 'dot') ? applyRankdirToDot(src, state.rankdir) : src;
+          const svg = await viz.renderSVGElement(dotToUse, { engine: state.engine });
+            zoomInner.innerHTML = "";
+            zoomInner.appendChild(svg);
+            applyZoom(state.scalePct);
+            applyFontSize(state.fontSize);
+          } catch (e2) {
+            graph.textContent = `Graph render failed with engine "${state.engine}".`;
+          }
+        }
+      }
+
+      // --- UI 綁定 ---
+      zoomRange.addEventListener("input", (e) => applyZoom(parseInt(e.target.value, 10)));
+      $("zoomIn").addEventListener("click", () => applyZoom(state.scalePct + 10));
+      $("zoomOut").addEventListener("click", () => applyZoom(state.scalePct - 10));
+      $("fitWidth").addEventListener("click", fitToWidth);
+      $("resetZoom").addEventListener("click", resetZoom);
+
+      fontRange.addEventListener("input", (e) => applyFontSize(parseInt(e.target.value, 10)));
+      $("fontBigger").addEventListener("click", () => applyFontSize(state.fontSize + 2));
+      $("fontSmaller").addEventListener("click", () => applyFontSize(state.fontSize - 2));
+      $("resetFont").addEventListener("click", resetFont);
+
+      graph.addEventListener("wheel", (e) => {
+        if (!e.ctrlKey) return;
+        e.preventDefault();
+        const delta = Math.sign(e.deltaY);
+        applyZoom(state.scalePct + (delta > 0 ? -5 : 5));
+      }, { passive: false });
+
+      // 監聽 layout 切換
+      if (layoutSelect) {
+        layoutSelect.addEventListener("change", async (e) => {
+          state.engine = e.target.value;
+          localStorage.setItem("gv_engine", state.engine);
+          if (engineBadge) engineBadge.textContent = `engine: ${state.engine}`;
+          console.log(`[engine] changed to %s`, state.engine);
+          await renderGraph();
+        });
+      }
+      
+      // 監聽 rankdir 切換（僅 dot 有效）
+      if (rankdirSelect) {
+        rankdirSelect.addEventListener("change", async (e) => {
+          state.rankdir = e.target.value;
+          localStorage.setItem("gv_rankdir", state.rankdir);
+          await renderGraph(); // 重新渲染；對非 dot 引擎本來就不會有影響
+        });
+      }
+      // --- 取得 DOT 並渲染（含 log） ---
+      google.script.run.withSuccessHandler(function (dot) {
+        console.log("Graphviz DOT 語法：", dot);
+        state.dot = dot;
+        renderGraph();
+      }).getGraphData();
+    </script>
+  </body>
+</html>
