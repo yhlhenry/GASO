@@ -72,6 +72,7 @@ function getGraphData() {
   dot += "}";
 
   console.log("最終 nodeDetails:", nodeDetails);
+  console.log("生成的 DOT 語法:", dot);
   
   // 返回 DOT 語法和節點詳細資訊
   return {

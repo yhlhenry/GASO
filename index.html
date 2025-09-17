@@ -414,9 +414,16 @@
 
       // --- 顯示節點資訊 ---
       function showNodeInfo(nodeId, nodeLabel) {
-        console.log("尋找節點:", nodeId, "在 nodeDetails 中:", state.nodeDetails);
-        const nodeDetail = state.nodeDetails.find(n => n.id === nodeId);
-        console.log("找到的 nodeDetail:", nodeDetail);
+        console.log("尋找節點:", nodeId, "標籤:", nodeLabel, "在 nodeDetails 中:", state.nodeDetails);
+        // 先嘗試用 ID 匹配
+        let nodeDetail = state.nodeDetails.find(n => n.id === nodeId);
+        // 如果找不到，嘗試用標籤匹配
+        if (!nodeDetail) {
+          nodeDetail = state.nodeDetails.find(n => n.label === nodeLabel);
+          console.log("用標籤匹配找到的 nodeDetail:", nodeDetail);
+        } else {
+          console.log("用 ID 匹配找到的 nodeDetail:", nodeDetail);
+        }
         if (nodeDetail) {
           showCustomModal(nodeDetail);
         } else {
