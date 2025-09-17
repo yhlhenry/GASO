@@ -58,13 +58,14 @@ function getGraphData() {
 
       // 如果 Attribute 有值，直接拼進去
       let extra = attr ? `, ${attr}` : "";
-      dot += `  ${id} [label="${label}", style=filled, fillcolor="${color}"${extra}];\n`;
+      // 確保節點 ID 被正確設定，使用引號包圍 ID
+      dot += `  "${id}" [label="${label}", style=filled, fillcolor="${color}"${extra}];\n`;
     }
   });
 
   edges.forEach(([src, tgt]) => {
     if (src && tgt) {
-      dot += `  ${src} -> ${tgt};\n`;
+      dot += `  "${src}" -> "${tgt}";\n`;
     }
   });
 
