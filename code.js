@@ -10,6 +10,8 @@ function getGraphData() {
   // A=Node Id, B=Label, C=Attribute, D=Status, E=Prompt (新增提示欄位)
   const nodes = nodeSheet.getRange(2, 1, nodeSheet.getLastRow() - 1, 5).getValues();
   const edges = edgeSheet.getRange(2, 1, edgeSheet.getLastRow() - 1, 2).getValues();
+  
+  console.log("原始 nodes 資料:", nodes);
 
   let dot = `
     digraph G {
@@ -21,6 +23,7 @@ function getGraphData() {
   const nodeDetails = [];
 
   nodes.forEach(([id, label, attr, status, prompt]) => {
+    console.log(`處理節點: id=${id}, label=${label}, prompt=${prompt}`);
     if (id && label) {
       let color = "white";
       let statusText = "未設定";
@@ -40,13 +43,16 @@ function getGraphData() {
       }
 
       // 儲存節點詳細資訊
+      const finalPrompt = prompt || `這是 ${label} 節點的詳細說明。`;
+      console.log(`節點 ${id} 的最終 prompt:`, finalPrompt);
+      
       nodeDetails.push({
         id: id,
         label: label,
         attribute: attr || "",
         status: status || "",
         statusText: statusText,
-        prompt: prompt || `這是 ${label} 節點的詳細說明。`,
+        prompt: finalPrompt,
         color: color
       });
 
@@ -64,6 +70,8 @@ function getGraphData() {
 
   dot += "}";
 
+  console.log("最終 nodeDetails:", nodeDetails);
+  
   // 返回 DOT 語法和節點詳細資訊
   return {
     dot: dot,

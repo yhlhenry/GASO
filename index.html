@@ -414,7 +414,9 @@
 
       // --- 顯示節點資訊 ---
       function showNodeInfo(nodeId, nodeLabel) {
+        console.log("尋找節點:", nodeId, "在 nodeDetails 中:", state.nodeDetails);
         const nodeDetail = state.nodeDetails.find(n => n.id === nodeId);
+        console.log("找到的 nodeDetail:", nodeDetail);
         if (nodeDetail) {
           showCustomModal(nodeDetail);
         } else {
@@ -433,6 +435,7 @@
 
       // --- 自定義彈出視窗 ---
       function showCustomModal(nodeDetail) {
+        console.log("顯示節點詳情:", nodeDetail);
         const modal = document.getElementById('nodeModal');
         const title = document.getElementById('modalTitle');
         const content = document.getElementById('modalContent');
