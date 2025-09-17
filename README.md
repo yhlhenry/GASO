@@ -73,13 +73,6 @@ GASO 不只是一個 Google Apps Script 學習工具，更是一個可複製的�
 - [一個偉大平台的誕生：GASO (Google Apps Script Odyssey), Let's Go!](https://ithelp.ithome.com.tw/articles/10380649)
 - [GASO 的核心：在描繪客製化的學習路徑之前，要先有個 Google Apps Script 的世界地圖](https://ithelp.ithome.com.tw/articles/10381284)
 
-## 🤝 貢獻
-
-歡迎對這個專案提出建議或貢獻！我們相信最好的學習工具是大家一起打造的。
-
-## 📄 授權
-
-本專案採用開源授權，歡迎自由使用和修改。
 
 ---
 

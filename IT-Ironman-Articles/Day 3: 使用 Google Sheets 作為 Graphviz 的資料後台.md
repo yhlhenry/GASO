@@ -48,14 +48,14 @@ GASO 專案選擇 Graphviz 的原因很明確：
   A 欄：節點 ID（如 "N1"）
   B 欄：節點標籤（如 "初學者起點"）
 
-![Node List](https://docs.google.com/drawings/d/e/2PACX-1vSN1MyT-AEul0XryJf9B4rzw6p7cWZhMp-1ANamOuUeWcKVbU4m6lOay2fslRahOgfU7I2IgEwtmQrN/pub?w=960&h=720)
+![Node List](https://docs.google.com/drawings/d/e/2PACX-1vSN1MyT-AEul0XryJf9B4rzw6p7cWZhMp-1ANamOuUeWcKVbU4m6lOay2fslRahOgfU7I2IgEwtmQrN/pub?w=480&h=360)
 
 
 2. Edge 工作表（邊清單）：  
   A 欄：來源節點 ID
   B 欄：目標節點 ID
 
-![Edge List](https://docs.google.com/drawings/d/e/2PACX-1vTXaMJFRILbo-XFMnEn8J4BAIxAbK64rt33Q--HLeQsbHRNpqcpdvfuWYMksWsfvkqNPGjDeruYa7_6/pub?w=960&h=720)
+![Edge List](https://docs.google.com/drawings/d/e/2PACX-1vTXaMJFRILbo-XFMnEn8J4BAIxAbK64rt33Q--HLeQsbHRNpqcpdvfuWYMksWsfvkqNPGjDeruYa7_6/pub?w=480&h=360)
 
   換句話說，  
   在 Node 清單中，每一列資料都代表一個節點。  
@@ -71,7 +71,7 @@ GASO 專案選擇 Graphviz 的原因很明確：
   
   我做了一個(其實是 AI 做了一個) `getGraphData()` 函數負責將 Google Sheets 的數據轉換為 Graphviz 的 DOT 語法，  
   以下僅摘要重點，  
-  如果想看完整版可以上 Github 參考。  
+  如果想看完整版可以上 [Github](https://github.com/yhlhenry/GASO) 參考。  
   
 ```javascript
 function getGraphData() {
@@ -133,3 +133,10 @@ Graphviz 雖然可以自動畫圖，
 當這個世界地圖非常龐大複雜的時候，如何簡明清楚的呈現就變成了一個大挑戰。
 
 明天就來跟大家分享一下我在調整地圖時所遭遇的困難與解方。
+
+
+---
+
+如果想要看一些我的鐵人賽花邊心得，
+也歡迎追蹤我的 [Threads](https://www.threads.com/@henryyang_tw) 和 [Facebook](https://www.facebook.com/henry.yang.3956)
+

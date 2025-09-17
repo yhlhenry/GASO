@@ -23,6 +23,124 @@
       .muted { color: #666; font-size: .9em; }
       .badge { padding: .15rem .45rem; border: 1px solid #bbb; border-radius: 999px; font-size: .85em; }
       .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+
+      /* 彈出視窗樣式 */
+      .modal {
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+        backdrop-filter: blur(2px);
+      }
+
+      .modal-content {
+        background-color: #fefefe;
+        margin: 10% auto;
+        padding: 25px;
+        border: 1px solid #888;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        position: relative;
+        animation: modalSlideIn 0.3s ease-out;
+      }
+
+      @keyframes modalSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-50px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+        position: absolute;
+        right: 15px;
+        top: 15px;
+        line-height: 1;
+      }
+
+      .close:hover {
+        color: #000;
+      }
+
+      /* 節點資訊樣式 */
+      .node-info {
+        margin-top: 15px;
+      }
+
+      .info-row {
+        display: flex;
+        margin-bottom: 12px;
+        align-items: flex-start;
+      }
+
+      .info-label {
+        font-weight: bold;
+        color: #333;
+        min-width: 60px;
+        margin-right: 10px;
+      }
+
+      .info-value {
+        color: #666;
+        flex: 1;
+      }
+
+      .info-description {
+        color: #666;
+        flex: 1;
+        line-height: 1.5;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        border-left: 3px solid #007bff;
+      }
+
+      /* 狀態標籤樣式 */
+      .status-todo {
+        background: #e9ecef;
+        color: #495057;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.85em;
+      }
+
+      .status-inprogress {
+        background: #fff3cd;
+        color: #856404;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.85em;
+      }
+
+      .status-done {
+        background: #d4edda;
+        color: #155724;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.85em;
+      }
+
+      .status- {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.85em;
+      }
     </style>
   </head>
   <body>
@@ -78,6 +196,15 @@
       <div id="zoomInner"></div>
     </div>
 
+    <!-- 節點資訊彈出視窗 -->
+    <div id="nodeModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <h3 id="modalTitle">節點資訊</h3>
+        <div id="modalContent"></div>
+      </div>
+    </div>
+
     <script>
       const state = {
         scalePct: 100,
@@ -87,7 +214,8 @@
         origFontSize: 14,
         engine: localStorage.getItem("gv_engine") || "dot",
         rankdir: localStorage.getItem("gv_rankdir") || "TB",
-        dot: ""
+        dot: "",
+        nodeDetails: [] // 新增：儲存節點詳細資訊
       };
 
       const $ = (id) => document.getElementById(id);
@@ -194,6 +322,9 @@
           zoomInner.innerHTML = "";
           zoomInner.appendChild(svg);
 
+          // 為每個節點添加點擊事件
+          addNodeClickEvents(svg);
+
           applyZoom(state.scalePct);
           applyFontSize(state.fontSize);
         } catch (err) {
@@ -206,6 +337,10 @@
           const svg = await viz.renderSVGElement(dotToUse, { engine: state.engine });
             zoomInner.innerHTML = "";
             zoomInner.appendChild(svg);
+            
+            // 為每個節點添加點擊事件
+            addNodeClickEvents(svg);
+            
             applyZoom(state.scalePct);
             applyFontSize(state.fontSize);
           } catch (e2) {
@@ -252,10 +387,107 @@
           await renderGraph(); // 重新渲染；對非 dot 引擎本來就不會有影響
         });
       }
+      // --- 節點點擊事件處理 ---
+      function addNodeClickEvents(svg) {
+        const nodes = svg.querySelectorAll('g.node');
+        nodes.forEach(node => {
+          node.style.cursor = 'pointer';
+          
+          // 添加 hover 效果
+          node.addEventListener('mouseenter', () => {
+            node.style.opacity = '0.8';
+          });
+          
+          node.addEventListener('mouseleave', () => {
+            node.style.opacity = '1';
+          });
+          
+          // 添加點擊事件
+          node.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const nodeId = node.id;
+            const nodeLabel = node.querySelector('text')?.textContent || nodeId;
+            showNodeInfo(nodeId, nodeLabel);
+          });
+        });
+      }
+
+      // --- 顯示節點資訊 ---
+      function showNodeInfo(nodeId, nodeLabel) {
+        const nodeDetail = state.nodeDetails.find(n => n.id === nodeId);
+        if (nodeDetail) {
+          showCustomModal(nodeDetail);
+        } else {
+          // 如果找不到詳細資訊，顯示基本資訊
+          showCustomModal({
+            id: nodeId,
+            label: nodeLabel,
+            attribute: "",
+            status: "",
+            statusText: "未知",
+            description: "此節點沒有詳細資訊。",
+            color: "white"
+          });
+        }
+      }
+
+      // --- 自定義彈出視窗 ---
+      function showCustomModal(nodeDetail) {
+        const modal = document.getElementById('nodeModal');
+        const title = document.getElementById('modalTitle');
+        const content = document.getElementById('modalContent');
+        
+        title.textContent = `節點: ${nodeDetail.id}`;
+        content.innerHTML = `
+          <div class="node-info">
+            <div class="info-row">
+              <span class="info-label">標籤:</span>
+              <span class="info-value">${nodeDetail.label}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">狀態:</span>
+              <span class="info-value status-${nodeDetail.status.toLowerCase()}">${nodeDetail.statusText}</span>
+            </div>
+            ${nodeDetail.attribute ? `
+            <div class="info-row">
+              <span class="info-label">屬性:</span>
+              <span class="info-value">${nodeDetail.attribute}</span>
+            </div>
+            ` : ''}
+            <div class="info-row">
+              <span class="info-label">描述:</span>
+              <div class="info-description">${nodeDetail.description}</div>
+            </div>
+          </div>
+        `;
+        
+        modal.style.display = 'block';
+      }
+
+      // --- 彈出視窗事件處理 ---
+      document.querySelector('.close').onclick = function() {
+        document.getElementById('nodeModal').style.display = 'none';
+      }
+
+      window.onclick = function(event) {
+        const modal = document.getElementById('nodeModal');
+        if (event.target == modal) {
+          modal.style.display = 'none';
+        }
+      }
+
+      // 按 ESC 鍵關閉彈出視窗
+      document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+          document.getElementById('nodeModal').style.display = 'none';
+        }
+      });
+
       // --- 取得 DOT 並渲染（含 log） ---
-      google.script.run.withSuccessHandler(function (dot) {
-        console.log("Graphviz DOT 語法：", dot);
-        state.dot = dot;
+      google.script.run.withSuccessHandler(function (data) {
+        console.log("Graphviz 資料：", data);
+        state.dot = data.dot;
+        state.nodeDetails = data.nodeDetails;
         renderGraph();
       }).getGraphData();
     </script>
