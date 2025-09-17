@@ -99,7 +99,7 @@
         flex: 1;
       }
 
-      .info-description {
+      .info-prompt {
         color: #666;
         flex: 1;
         line-height: 1.5;
@@ -425,7 +425,7 @@
             attribute: "",
             status: "",
             statusText: "未知",
-            description: "此節點沒有詳細資訊。",
+            prompt: "此節點沒有詳細資訊。",
             color: "white"
           });
         }
@@ -455,8 +455,8 @@
             </div>
             ` : ''}
             <div class="info-row">
-              <span class="info-label">描述:</span>
-              <div class="info-description">${nodeDetail.description}</div>
+              <span class="info-label">提示:</span>
+              <div class="info-prompt">${nodeDetail.prompt}</div>
             </div>
           </div>
         `;
