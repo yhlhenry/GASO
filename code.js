@@ -21,6 +21,10 @@ function getGraphData() {
 
   // 儲存節點詳細資訊
   const nodeDetails = [];
+  // 儲存邊的詳細資訊
+  const edgeDetails = [];
+  // 建立鄰接表用於路徑查找
+  const adjacencyList = {};
 
   nodes.forEach(([id, label, attr, status, prompt]) => {
     console.log(`處理節點: id=${id}, label=${label}, prompt=${prompt}`);
@@ -63,20 +67,44 @@ function getGraphData() {
     }
   });
 
+  // 初始化鄰接表
+  nodes.forEach(([id]) => {
+    if (id) {
+      adjacencyList[id] = [];
+    }
+  });
+
   edges.forEach(([src, tgt]) => {
     if (src && tgt) {
-      dot += `  "${src}" -> "${tgt}";\n`;
+      // 儲存邊的詳細資訊
+      edgeDetails.push({
+        source: src,
+        target: tgt,
+        id: `${src}_${tgt}` // 邊的唯一識別碼
+      });
+      
+      // 建立鄰接表
+      if (!adjacencyList[src]) {
+        adjacencyList[src] = [];
+      }
+      adjacencyList[src].push(tgt);
+      
+      dot += `  "${src}" -> "${tgt}" [id="${src}_${tgt}"];\n`;
     }
   });
 
   dot += "}";
 
   console.log("最終 nodeDetails:", nodeDetails);
+  console.log("最終 edgeDetails:", edgeDetails);
+  console.log("鄰接表:", adjacencyList);
   console.log("生成的 DOT 語法:", dot);
   
-  // 返回 DOT 語法和節點詳細資訊
+  // 返回 DOT 語法、節點詳細資訊、邊詳細資訊和鄰接表
   return {
     dot: dot,
-    nodeDetails: nodeDetails
+    nodeDetails: nodeDetails,
+    edgeDetails: edgeDetails,
+    adjacencyList: adjacencyList
   };
 }
