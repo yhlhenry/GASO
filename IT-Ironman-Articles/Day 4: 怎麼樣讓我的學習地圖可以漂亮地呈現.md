@@ -29,7 +29,7 @@ Graphviz 提供了多種不同的排版引擎，每種都有其特色和適用�
 - **適用場景**：組織架構圖、流程圖、決策樹
 - **參數**：支援 `rankdir`（TB/LR/BT/RL）控制方向
 
-![dot 排版範例](./image/dot_sample.png)
+![dot 排版範例](/image/dot_sample.png)
 
 ### 2. neato（力導向排版）
 - **特色**：基於物理模擬的力導向演算法
@@ -37,35 +37,35 @@ Graphviz 提供了多種不同的排版引擎，每種都有其特色和適用�
 - **適用場景**：網路圖、關係圖、社交網路
 - **優點**：最接近我想要的自然散佈效果
 
-![neato 排版範例](./image/neato_sample.png)
+![neato 排版範例](/image/neato_sample.png)
 
 ### 3. fdp（力導向排版）
 - **特色**：另一種力導向演算法，處理大型圖表更有效率
 - **效果**：與 neato 類似，但對大圖的處理更好
 - **適用場景**：大型網路圖、複雜關係圖
 
-![fdp 排版範例](./image/fdp_sample.png)
+![fdp 排版範例](/image/fdp_sample.png)
 
 ### 4. twopi（放射狀排版）
 - **特色**：以某個中心節點為圓心，其他節點呈放射狀排列
 - **效果**：像太陽系一樣的放射狀結構
 - **適用場景**：以某個核心概念為中心的知識地圖
 
-![twopi 排版範例](./image/twopi_sample.png)
+![twopi 排版範例](/image/twopi_sample.png)
 
 ### 5. circo（圓環排版）
 - **特色**：節點排列成圓形或橢圓形
 - **效果**：整齊的圓形排列
 - **適用場景**：循環流程、對稱關係圖
 
-![circo 排版範例](./image/circo_sample.png)
+![circo 排版範例](/image/circo_sample.png)
 
 ### 6. osage（叢集排版）
 - **特色**：將節點組織成叢集結構
 - **效果**：相關節點會聚集在一起，形成清晰的群組
 - **適用場景**：模組化設計、分類圖表
 
-![osage 排版範例](./image/osage_sample.png)
+![osage 排版範例](/image/osage_sample.png)
 
 
 
