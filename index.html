@@ -21,7 +21,6 @@
       .controls button:active { transform: translateY(1px); }
       label { display: inline-flex; align-items: center; gap: .35rem; }
       .muted { color: #666; font-size: .9em; }
-      .badge { padding: .15rem .45rem; border: 1px solid #bbb; border-radius: 999px; font-size: .85em; }
       .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
 
       /* 彈出視窗樣式 */
@@ -154,7 +153,7 @@
       <span id="zoomLabel">100%</span>
       <button id="zoomOut">−</button>
       <button id="zoomIn">＋</button>
-      <button id="fitWidth">適合寬度</button>
+      <button id="fitWidth">適應螢幕寬度</button>
       <button id="resetZoom">重設</button>
       <span class="muted">(Ctrl+滾輪可縮放)</span>
 
@@ -178,7 +177,12 @@
           <option value="RL">RL（右→左）</option>
         </select>
       </label>
-      <span id="engineBadge" class="badge">engine: dot</span>
+      <label style="margin-left:.75rem">邊線樣式：
+        <select id="splinesSelect">
+          <option value="curved">彎曲邊</option>
+          <option value="line">直線邊</option>
+        </select>
+      </label>
     </div>
 
     <!-- 字體大小控制列 -->
@@ -215,6 +219,7 @@
         origFontSize: 14,
         engine: localStorage.getItem("gv_engine") || "dot",
         rankdir: localStorage.getItem("gv_rankdir") || "TB",
+        splines: localStorage.getItem("gv_splines") || "curved",
         dot: "",
         nodeDetails: [], // 儲存節點詳細資訊
         edgeDetails: [], // 儲存邊詳細資訊
@@ -230,12 +235,12 @@
       const fontRange = $("fontRange");
       const fontLabel = $("fontLabel");
       const layoutSelect = $("layoutSelect");
-      const engineBadge = $("engineBadge");
       const rankdirSelect = $("rankdirSelect");
+      const splinesSelect = $("splinesSelect");
 
       if (layoutSelect) layoutSelect.value = state.engine;
       if (rankdirSelect) rankdirSelect.value = state.rankdir;
-      if (engineBadge) engineBadge.textContent = `engine: ${state.engine}`;
+      if (splinesSelect) splinesSelect.value = state.splines;
 
       // --- 建立/重建 Viz 實例（避免 worker 卡住） ---
       let viz;
@@ -292,13 +297,32 @@
         }
       }
 
+      // --- splines 注入（所有引擎都有效） ---
+      function applySplinesToDot(src, splinesType) {
+        try {
+          if (!src) return src;
+          // 移除既有 splines 設定
+          let cleaned = src.replace(/\bsplines\s*=\s*"?[a-zA-Z]+"?\s*;?/gi, "");
+          // 在第一個 { 之後注入 splines
+          const i = cleaned.indexOf('{');
+          if (i !== -1) {
+            return cleaned.slice(0, i + 1) + `\n  splines=${splinesType};` + cleaned.slice(i + 1);
+          }
+          return `digraph G { splines=${splinesType}; ${cleaned} }`;
+        } catch (e) {
+          console.warn('applySplinesToDot failed, fallback raw DOT');
+          return src;
+        }
+      }
+
       // --- 依指定引擎渲染 DOT ---
       async function renderGraph() {
         if (!state.dot) return;
         try {
-          console.log(`[render] engine=%s`, state.engine);
+          console.log(`[render] engine=%s, splines=%s`, state.engine, state.splines);
           const src = state.dot;
-          const dotToUse = (state.engine === 'dot') ? applyRankdirToDot(src, state.rankdir) : src;
+          let dotToUse = applySplinesToDot(src, state.splines);
+          dotToUse = (state.engine === 'dot') ? applyRankdirToDot(dotToUse, state.rankdir) : dotToUse;
           const svg = await viz.renderSVGElement(dotToUse, { engine: state.engine });
 
           const rawW = svg.getAttribute("width");
@@ -331,14 +355,20 @@
 
           applyZoom(state.scalePct);
           applyFontSize(state.fontSize);
+          
+          // 自動適應螢幕寬度
+          setTimeout(() => {
+            fitToWidth();
+          }, 100);
         } catch (err) {
           console.error("render error:", err);
           // worker 可能壞掉，重建後再試一次
           newViz();
           try {
             const src = state.dot;
-          const dotToUse = (state.engine === 'dot') ? applyRankdirToDot(src, state.rankdir) : src;
-          const svg = await viz.renderSVGElement(dotToUse, { engine: state.engine });
+            let dotToUse = applySplinesToDot(src, state.splines);
+            dotToUse = (state.engine === 'dot') ? applyRankdirToDot(dotToUse, state.rankdir) : dotToUse;
+            const svg = await viz.renderSVGElement(dotToUse, { engine: state.engine });
             zoomInner.innerHTML = "";
             zoomInner.appendChild(svg);
             
@@ -347,6 +377,11 @@
             
             applyZoom(state.scalePct);
             applyFontSize(state.fontSize);
+            
+            // 自動適應螢幕寬度
+            setTimeout(() => {
+              fitToWidth();
+            }, 100);
           } catch (e2) {
             graph.textContent = `Graph render failed with engine "${state.engine}".`;
           }
@@ -378,7 +413,6 @@
         layoutSelect.addEventListener("change", async (e) => {
           state.engine = e.target.value;
           localStorage.setItem("gv_engine", state.engine);
-          if (engineBadge) engineBadge.textContent = `engine: ${state.engine}`;
           console.log(`[engine] changed to %s`, state.engine);
           await renderGraph();
         });
@@ -392,73 +426,126 @@
           await renderGraph(); // 重新渲染；對非 dot 引擎本來就不會有影響
         });
       }
+
+      // 監聽 splines 切換（所有引擎都有效）
+      if (splinesSelect) {
+        splinesSelect.addEventListener("change", async (e) => {
+          state.splines = e.target.value;
+          localStorage.setItem("gv_splines", state.splines);
+          console.log(`[splines] changed to %s`, state.splines);
+          await renderGraph(); // 重新渲染
+        });
+      }
       // --- 路徑查找和高亮功能 ---
       
       // 使用 BFS 找到從起點到目標節點的最短路徑
       function findPathToNode(targetNodeId) {
-        // 明確指定起點為 "Start"
-        const startNode = "Start";
+        console.log("=== 路徑查找調試 ===");
+        console.log("目標節點 ID:", targetNodeId);
         
-        // 檢查起點是否存在
-        if (!state.adjacencyList[startNode]) {
-          console.log("起點 'Start' 不存在");
+        // 找到實際的起點（沒有入邊的節點）
+        const startNodes = findStartNodes();
+        console.log("找到的起點節點:", startNodes);
+        
+        if (startNodes.length === 0) {
+          console.log("沒有找到起點節點");
           return [];
         }
         
-        // 從起點開始尋找路徑
-        console.log(`從起點 '${startNode}' 尋找路徑到 '${targetNodeId}'`);
+        // 使用第一個起點作為起始點
+        const startNode = startNodes[0];
+        console.log("使用起點:", startNode);
+        
+        // 檢查目標節點是否存在
+        if (!state.adjacencyList[targetNodeId]) {
+          console.log(`目標節點 '${targetNodeId}' 不存在於鄰接表中`);
+          console.log("可用的節點 ID:", Object.keys(state.adjacencyList));
+          return [];
+        }
+        
+        // 從起點開始尋找所有路徑
+        console.log(`從起點 '${startNode}' 尋找所有路徑到 '${targetNodeId}'`);
         console.log("鄰接表:", state.adjacencyList);
-        const path = bfsPath(startNode, targetNodeId);
-        console.log("找到的路徑:", path);
-        return path;
+        const allPaths = findAllPaths(startNode, targetNodeId);
+        console.log("找到的所有路徑:", allPaths);
+        return allPaths;
       }
       
       // 找到起點（沒有入邊的節點）
       function findStartNodes() {
+        console.log("=== 尋找起點節點 ===");
         const allNodes = new Set(Object.keys(state.adjacencyList));
         const hasIncoming = new Set();
         
+        console.log("所有節點:", Array.from(allNodes));
+        
         // 找出所有有入邊的節點
-        Object.values(state.adjacencyList).forEach(neighbors => {
+        Object.entries(state.adjacencyList).forEach(([source, neighbors]) => {
           neighbors.forEach(neighbor => {
             hasIncoming.add(neighbor);
+            console.log(`節點 ${source} -> ${neighbor} (${neighbor} 有入邊)`);
           });
         });
         
+        console.log("有入邊的節點:", Array.from(hasIncoming));
+        
         // 起點是沒有入邊的節點
-        return Array.from(allNodes).filter(node => !hasIncoming.has(node));
+        const startNodes = Array.from(allNodes).filter(node => !hasIncoming.has(node));
+        console.log("起點節點（沒有入邊的節點）:", startNodes);
+        
+        return startNodes;
       }
       
-      // BFS 路徑查找
-      function bfsPath(start, target) {
+      // BFS 路徑查找 - 找到所有可能的路徑
+      function findAllPaths(start, target) {
+        console.log("=== 查找所有路徑開始 ===");
+        console.log("起點:", start);
+        console.log("目標:", target);
+        
+        const allPaths = [];
         const queue = [[start]];
-        const visited = new Set([start]);
+        let step = 0;
         
         while (queue.length > 0) {
+          step++;
           const path = queue.shift();
           const current = path[path.length - 1];
           
+          console.log(`步驟 ${step}: 當前節點 ${current}, 路徑:`, path);
+          
           if (current === target) {
-            return path;
+            console.log(`找到目標節點！路徑:`, path);
+            allPaths.push([...path]);
+            continue; // 繼續尋找其他路徑
           }
           
           const neighbors = state.adjacencyList[current] || [];
+          console.log(`節點 ${current} 的鄰居:`, neighbors);
+          
           for (const neighbor of neighbors) {
-            if (!visited.has(neighbor)) {
-              visited.add(neighbor);
-              queue.push([...path, neighbor]);
+            // 避免循環路徑（同一個節點在路徑中出現多次）
+            if (!path.includes(neighbor)) {
+              const newPath = [...path, neighbor];
+              queue.push(newPath);
+              console.log(`添加新路徑:`, newPath);
+            } else {
+              console.log(`節點 ${neighbor} 已在路徑中，跳過以避免循環`);
             }
           }
         }
         
-        return [];
+        console.log(`找到 ${allPaths.length} 條路徑:`, allPaths);
+        return allPaths;
       }
       
-      // 高亮路徑上的邊
-      function highlightPath(path) {
-        // 先清除之前的高亮
-        clearPathHighlight();
-        
+      // 保留原來的 BFS 函數作為備用
+      function bfsPath(start, target) {
+        const allPaths = findAllPaths(start, target);
+        return allPaths.length > 0 ? allPaths[0] : []; // 返回第一條路徑
+      }
+      
+      // 高亮單條路徑上的邊
+      function highlightSinglePath(path) {
         if (path.length < 2) return;
         
         const svg = zoomInner.querySelector('svg');
@@ -474,18 +561,77 @@
           const edgeElement = svg.querySelector(`#${edgeId}`);
           
           if (edgeElement) {
-            // 添加高亮樣式
-            edgeElement.style.stroke = '#ff6b6b';
-            edgeElement.style.strokeWidth = '3px';
-            edgeElement.style.strokeDasharray = '5,5';
-            edgeElement.style.animation = 'pathPulse 2s infinite';
+            // 找到邊元素內部的 path 元素（實際繪製線條的元素）
+            const pathElement = edgeElement.querySelector('path');
+            const polygonElement = edgeElement.querySelector('polygon'); // 箭頭元素
             
-            // 記錄高亮的邊
-            state.highlightedPath.push(edgeElement);
+            if (pathElement) {
+              // 對 path 元素應用高亮樣式 - 10px 綠色實線
+              pathElement.style.setProperty('stroke', '#00ff00', 'important');
+              pathElement.style.setProperty('stroke-width', '10px', 'important');
+              pathElement.style.removeProperty('stroke-dasharray'); // 移除虛線，變成實線
+              pathElement.style.setProperty('animation', 'pathPulse 2s infinite', 'important');
+              
+              // 對箭頭元素也應用高亮樣式
+              if (polygonElement) {
+                polygonElement.style.setProperty('fill', '#00ff00', 'important');
+                polygonElement.style.setProperty('stroke', '#00ff00', 'important');
+              }
+              
+              // 添加高亮類別到整個邊元素
+              edgeElement.classList.add('path-highlighted');
+              
+              // 記錄高亮的邊元素和其子元素
+              state.highlightedPath.push({
+                edge: edgeElement,
+                path: pathElement,
+                polygon: polygonElement
+              });
+              
+              console.log(`高亮邊: ${edgeId}`, { edgeElement, pathElement, polygonElement });
+            } else {
+              console.log(`邊元素 ${edgeId} 中找不到 path 元素`);
+            }
+          } else {
+            console.log(`找不到邊元素: ${edgeId}`);
           }
         }
+      }
+      
+      // 高亮多條路徑
+      function highlightAllPaths(allPaths) {
+        // 先清除之前的高亮
+        clearPathHighlight();
         
-        // 添加動畫樣式
+        if (allPaths.length === 0) return;
+        
+        // 確保樣式已添加
+        addPathHighlightStyles();
+        
+        console.log(`開始高亮 ${allPaths.length} 條路徑`);
+        
+        // 高亮每條路徑
+        allPaths.forEach((path, index) => {
+          console.log(`高亮第 ${index + 1} 條路徑:`, path);
+          highlightSinglePath(path);
+        });
+        
+        console.log(`完成高亮，共高亮了 ${state.highlightedPath.length} 條邊`);
+      }
+      
+      // 保持向後兼容的函數
+      function highlightPath(path) {
+        if (Array.isArray(path) && path.length > 0 && Array.isArray(path[0])) {
+          // 如果傳入的是多條路徑
+          highlightAllPaths(path);
+        } else {
+          // 如果傳入的是單條路徑
+          highlightAllPaths([path]);
+        }
+      }
+      
+      // 添加動畫樣式和高亮類別
+      function addPathHighlightStyles() {
         if (!document.getElementById('pathHighlightStyle')) {
           const style = document.createElement('style');
           style.id = 'pathHighlightStyle';
@@ -494,6 +640,12 @@
               0%, 100% { opacity: 1; }
               50% { opacity: 0.6; }
             }
+            
+            .path-highlighted {
+              stroke: #00ff00 !important;
+              stroke-width: 10px !important;
+              animation: pathPulse 2s infinite !important;
+            }
           `;
           document.head.appendChild(style);
         }
@@ -501,13 +653,36 @@
       
       // 清除路徑高亮
       function clearPathHighlight() {
-        state.highlightedPath.forEach(edge => {
-          edge.style.stroke = '';
-          edge.style.strokeWidth = '';
-          edge.style.strokeDasharray = '';
-          edge.style.animation = '';
+        state.highlightedPath.forEach(highlightedItem => {
+          // 處理新的數據結構
+          if (highlightedItem.edge) {
+            // 清除邊元素的樣式
+            highlightedItem.edge.classList.remove('path-highlighted');
+            
+            // 清除 path 元素的樣式
+            if (highlightedItem.path) {
+              highlightedItem.path.style.removeProperty('stroke');
+              highlightedItem.path.style.removeProperty('stroke-width');
+              highlightedItem.path.style.removeProperty('stroke-dasharray');
+              highlightedItem.path.style.removeProperty('animation');
+            }
+            
+            // 清除箭頭元素的樣式
+            if (highlightedItem.polygon) {
+              highlightedItem.polygon.style.removeProperty('fill');
+              highlightedItem.polygon.style.removeProperty('stroke');
+            }
+          } else {
+            // 處理舊的數據結構（向後兼容）
+            highlightedItem.style.removeProperty('stroke');
+            highlightedItem.style.removeProperty('stroke-width');
+            highlightedItem.style.removeProperty('stroke-dasharray');
+            highlightedItem.style.removeProperty('animation');
+            highlightedItem.classList.remove('path-highlighted');
+          }
         });
         state.highlightedPath = [];
+        console.log("已清除所有路徑高亮");
       }
 
       // --- 節點點擊事件處理 ---
@@ -528,20 +703,37 @@
           // 添加點擊事件
           node.addEventListener('click', (e) => {
             e.stopPropagation();
-            const nodeId = node.id;
-            const nodeLabel = node.querySelector('text')?.textContent || nodeId;
+            const svgNodeId = node.id; // SVG 中的節點 ID (如 node40)
+            const nodeLabel = node.querySelector('text')?.textContent || svgNodeId;
             
-            // 查找並高亮路徑
-            const path = findPathToNode(nodeId);
-            if (path.length > 0) {
-              console.log(`找到從起點到 ${nodeId} 的路徑:`, path);
-              highlightPath(path);
+            // 調試信息：顯示所有可用的節點 ID
+            console.log("=== 調試信息 ===");
+            console.log("SVG 節點 ID:", svgNodeId);
+            console.log("節點標籤:", nodeLabel);
+            console.log("鄰接表中的所有節點 ID:", Object.keys(state.adjacencyList));
+            console.log("nodeDetails 中的所有節點:", state.nodeDetails.map(n => ({id: n.id, label: n.label})));
+            
+            // 通過標籤找到實際的節點 ID
+            const actualNodeDetail = state.nodeDetails.find(n => n.label === nodeLabel);
+            const actualNodeId = actualNodeDetail ? actualNodeDetail.id : svgNodeId;
+            
+            console.log("通過標籤找到的實際節點 ID:", actualNodeId);
+            
+            // 查找並高亮所有路徑
+            const allPaths = findPathToNode(actualNodeId);
+            if (allPaths.length > 0) {
+              console.log(`找到從起點到 ${actualNodeId} 的 ${allPaths.length} 條路徑:`, allPaths);
+              highlightPath(allPaths);
             } else {
-              console.log(`找不到從起點到 ${nodeId} 的路徑`);
+              console.log(`找不到從起點到 ${actualNodeId} 的路徑`);
+              console.log("可能的原因：");
+              console.log("1. 節點 ID 不匹配");
+              console.log("2. 起點不存在");
+              console.log("3. 圖形不連通");
               clearPathHighlight();
             }
             
-            showNodeInfo(nodeId, nodeLabel);
+            showNodeInfo(actualNodeId, nodeLabel);
           });
         });
       }

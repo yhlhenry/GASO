@@ -15,7 +15,6 @@ function getGraphData() {
 
   let dot = `
     digraph G {
-      graph [splines=curved];
       graph [overlap=false];
     `;
 
