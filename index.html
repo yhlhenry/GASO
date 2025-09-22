@@ -15,7 +15,7 @@
       h2 { margin: 0 0 .5rem; }
       #graph { width: 100%; max-width: 100%; overflow: auto; border: 1px solid #ccc; border-radius: 6px; background: Canvas; }
       #zoomInner { transform-origin: 0 0; display: inline-block; position: relative; }
-      #zoomInner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png"); background-repeat: no-repeat; background-position: center center; background-size: contain; opacity: 0.3; z-index: -1; }
+      #zoomInner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png"); background-repeat: no-repeat; background-position: center center; background-size: cover; opacity: 0.3; z-index: -1; }
       #zoomInner svg { background: transparent !important; position: relative; z-index: 1; }
       #zoomInner svg polygon[fill="#ffffff"] { fill: transparent !important; }
       .controls { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
@@ -143,10 +143,105 @@
         border-radius: 12px;
         font-size: 0.85em;
       }
+
+      /* 搜尋功能樣式 */
+      .search-container {
+        margin: 1rem 0;
+        position: relative;
+      }
+
+      .search-box {
+        position: relative;
+        max-width: 400px;
+      }
+
+      #searchInput {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+        box-sizing: border-box;
+        transition: border-color 0.3s ease;
+      }
+
+      #searchInput:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+      }
+
+      .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .search-results.show {
+        display: block;
+      }
+
+      .search-result-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s ease;
+      }
+
+      .search-result-item:hover {
+        background-color: #f8f9fa;
+      }
+
+      .search-result-item:last-child {
+        border-bottom: none;
+      }
+
+      .search-result-title {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 4px;
+      }
+
+      .search-result-subtitle {
+        font-size: 0.9em;
+        color: #666;
+        line-height: 1.4;
+      }
+
+      .search-result-highlight {
+        background-color: #fff3cd;
+        padding: 1px 2px;
+        border-radius: 2px;
+      }
+
+      .no-results {
+        padding: 16px;
+        text-align: center;
+        color: #666;
+        font-style: italic;
+      }
     </style>
   </head>
   <body>
     <h2>Google Apps Script Graphviz Demo</h2>
+
+    <!-- 搜尋功能 -->
+    <div class="search-container">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="搜尋節點..." autocomplete="off" />
+        <div id="searchResults" class="search-results"></div>
+      </div>
+    </div>
 
     <!-- 縮放 + 版面配置控制列 -->
     <div class="controls row">
@@ -241,6 +336,8 @@
       const layoutSelect = $("layoutSelect");
       const rankdirSelect = $("rankdirSelect");
       const splinesSelect = $("splinesSelect");
+      const searchInput = $("searchInput");
+      const searchResults = $("searchResults");
 
       if (layoutSelect) layoutSelect.value = state.engine;
       if (rankdirSelect) rankdirSelect.value = state.rankdir;
@@ -822,6 +919,136 @@
           document.getElementById('nodeModal').style.display = 'none';
         }
       });
+
+      // --- 搜尋功能 ---
+      
+      // 高亮搜尋關鍵字
+      function highlightText(text, keyword) {
+        if (!keyword) return text;
+        const regex = new RegExp(`(${keyword})`, 'gi');
+        return text.replace(regex, '<span class="search-result-highlight">$1</span>');
+      }
+
+      // 搜尋節點
+      function searchNodes(keyword) {
+        if (!keyword || keyword.length < 1) {
+          searchResults.classList.remove('show');
+          return;
+        }
+
+        const results = state.nodeDetails.filter(node => {
+          const searchText = `${node.label} ${node.prompt} ${node.attribute}`.toLowerCase();
+          return searchText.includes(keyword.toLowerCase());
+        });
+
+        displaySearchResults(results, keyword);
+      }
+
+      // 顯示搜尋結果
+      function displaySearchResults(results, keyword) {
+        if (results.length === 0) {
+          searchResults.innerHTML = '<div class="no-results">找不到符合條件的節點</div>';
+        } else {
+          searchResults.innerHTML = results.map(node => `
+            <div class="search-result-item" data-node-id="${node.id}">
+              <div class="search-result-title">${highlightText(node.label, keyword)}</div>
+              <div class="search-result-subtitle">${highlightText(node.prompt.substring(0, 100) + (node.prompt.length > 100 ? '...' : ''), keyword)}</div>
+            </div>
+          `).join('');
+        }
+        searchResults.classList.add('show');
+      }
+
+      // 處理搜尋結果點擊
+      function handleSearchResultClick(nodeId) {
+        console.log("=== 搜尋結果點擊調試 ===");
+        console.log("點擊的節點 ID:", nodeId);
+        
+        // 找到對應的節點並觸發點擊
+        const svg = zoomInner.querySelector('svg');
+        if (!svg) {
+          console.log("找不到 SVG 元素");
+          return;
+        }
+
+        // 通過節點標籤找到對應的 SVG 節點
+        const nodeDetail = state.nodeDetails.find(n => n.id === nodeId);
+        if (!nodeDetail) {
+          console.log("找不到節點詳細資訊");
+          return;
+        }
+
+        console.log("節點詳細資訊:", nodeDetail);
+        
+        // 通過標籤文字找到對應的 SVG 節點
+        const allNodes = svg.querySelectorAll('g.node');
+        let nodeElement = null;
+        
+        for (const node of allNodes) {
+          const textElement = node.querySelector('text');
+          if (textElement && textElement.textContent === nodeDetail.label) {
+            nodeElement = node;
+            break;
+          }
+        }
+
+        console.log("找到的節點元素:", nodeElement);
+        console.log("節點元素 ID:", nodeElement ? nodeElement.id : "無");
+        
+        if (nodeElement) {
+          console.log("觸發節點點擊事件");
+          // 模擬節點點擊事件
+          const clickEvent = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+          });
+          nodeElement.dispatchEvent(clickEvent);
+          
+          // 隱藏搜尋結果
+          searchResults.classList.remove('show');
+          searchInput.value = '';
+        } else {
+          console.log("找不到對應的節點元素，直接顯示節點資訊");
+          // 如果找不到節點，直接調用 showNodeInfo
+          showNodeInfo(nodeDetail.id, nodeDetail.label);
+          // 隱藏搜尋結果
+          searchResults.classList.remove('show');
+          searchInput.value = '';
+        }
+      }
+
+      // 搜尋輸入事件監聽
+      if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function(e) {
+          clearTimeout(searchTimeout);
+          searchTimeout = setTimeout(() => {
+            searchNodes(e.target.value);
+          }, 150); // 150ms 延遲，避免過於頻繁的搜尋
+        });
+
+        // 點擊搜尋結果
+        searchResults.addEventListener('click', function(e) {
+          console.log("搜尋結果被點擊:", e.target);
+          const resultItem = e.target.closest('.search-result-item');
+          console.log("找到的結果項目:", resultItem);
+          if (resultItem) {
+            const nodeId = resultItem.dataset.nodeId;
+            console.log("節點 ID:", nodeId);
+            handleSearchResultClick(nodeId);
+          } else {
+            console.log("沒有找到結果項目");
+          }
+        });
+
+        // 點擊外部關閉搜尋結果
+        document.addEventListener('click', function(e) {
+          if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.classList.remove('show');
+          }
+        });
+      }
 
       // --- 取得 DOT 並渲染（含 log） ---
       function applyBackgroundFromConfig(url) {
