@@ -10,6 +10,9 @@
 
 所以今天，我們要讓學習路徑「亮」起來！就像這樣：
 
+![高亮顯示的學習路徑](https://raw.githubusercontent.com/yhlhenry/GASO/main/image/highlighted%20path.png)
+
+
 
 ## 路徑高亮功能的核心價值
 

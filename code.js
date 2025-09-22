@@ -2,8 +2,36 @@ function doGet() {
   return HtmlService.createHtmlOutputFromFile("index.html");
 }
 
+/**
+ * 讀取設定（Script Properties）
+ * 可設定：
+ * - SPREADSHEET_ID: 資料所在的試算表 ID（若非綁定專案時需要）
+ * - BACKGROUND_IMAGE_URL: 背景圖網址（可用雲端硬碟分享連結或其他公開 URL）
+ */
+function getConfig() {
+  const props = PropertiesService.getScriptProperties();
+  return {
+    spreadsheetId: props.getProperty('SPREADSHEET_ID') || '',
+    backgroundImageUrl: props.getProperty('BACKGROUND_IMAGE_URL') || ''
+  };
+}
+
+/**
+ * 取得試算表：
+ * - 優先使用 ActiveSpreadsheet（當此專案綁定在試算表時）
+ * - 否則使用 Script Properties 的 SPREADSHEET_ID
+ */
+function getSpreadsheet() {
+  const active = SpreadsheetApp.getActiveSpreadsheet();
+  if (active) return active;
+  const { spreadsheetId } = getConfig();
+  if (spreadsheetId) return SpreadsheetApp.openById(spreadsheetId);
+  throw new Error('找不到可用的試算表。請在 Script Properties 設定 SPREADSHEET_ID，或將此 Apps Script 綁定在目標試算表後再執行。');
+}
+
 function getGraphData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = getSpreadsheet();
+  const { backgroundImageUrl } = getConfig();
   const nodeSheet = ss.getSheetByName("Node");
   const edgeSheet = ss.getSheetByName("Edge");
 
@@ -104,6 +132,7 @@ function getGraphData() {
     dot: dot,
     nodeDetails: nodeDetails,
     edgeDetails: edgeDetails,
-    adjacencyList: adjacencyList
+    adjacencyList: adjacencyList,
+    backgroundImageUrl: backgroundImageUrl
   };
 }

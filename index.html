@@ -14,7 +14,10 @@
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 16px; }
       h2 { margin: 0 0 .5rem; }
       #graph { width: 100%; max-width: 100%; overflow: auto; border: 1px solid #ccc; border-radius: 6px; background: Canvas; }
-      #zoomInner { transform-origin: 0 0; display: inline-block; }
+      #zoomInner { transform-origin: 0 0; display: inline-block; position: relative; }
+      #zoomInner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png"); background-repeat: no-repeat; background-position: center center; background-size: contain; opacity: 0.3; z-index: -1; }
+      #zoomInner svg { background: transparent !important; position: relative; z-index: 1; }
+      #zoomInner svg polygon[fill="#ffffff"] { fill: transparent !important; }
       .controls { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
       .controls input[type="range"] { width: 150px; }
       .controls button, .controls select { padding: .35rem .6rem; border: 1px solid #bbb; background: #f8f8f8; border-radius: 6px; cursor: pointer; }
@@ -224,7 +227,8 @@
         nodeDetails: [], // 儲存節點詳細資訊
         edgeDetails: [], // 儲存邊詳細資訊
         adjacencyList: {}, // 鄰接表
-        highlightedPath: [] // 當前高亮的路徑
+        highlightedPath: [], // 當前高亮的路徑
+        backgroundImageUrl: "" // 從伺服器傳來的背景圖 URL（可覆寫預設）
       };
 
       const $ = (id) => document.getElementById(id);
@@ -820,14 +824,31 @@
       });
 
       // --- 取得 DOT 並渲染（含 log） ---
-      google.script.run.withSuccessHandler(function (data) {
-        console.log("Graphviz 資料：", data);
-        state.dot = data.dot;
-        state.nodeDetails = data.nodeDetails;
-        state.edgeDetails = data.edgeDetails;
-        state.adjacencyList = data.adjacencyList;
-        renderGraph();
-      }).getGraphData();
+      function applyBackgroundFromConfig(url) {
+        if (typeof url === 'string' && url.trim()) {
+          state.backgroundImageUrl = url.trim();
+          // 覆寫背景圖（若提供的是完整 URL）
+          const bg = `url("${state.backgroundImageUrl}")`;
+          zoomInner.style.backgroundImage = bg;
+        }
+      }
+
+      google.script.run
+        .withSuccessHandler(function (data) {
+          console.log("Graphviz 資料：", data);
+          state.dot = data.dot;
+          state.nodeDetails = data.nodeDetails;
+          state.edgeDetails = data.edgeDetails;
+          state.adjacencyList = data.adjacencyList;
+          applyBackgroundFromConfig(data.backgroundImageUrl);
+          renderGraph();
+        })
+        .withFailureHandler(function (err) {
+          console.error('取得資料失敗：', err);
+          const msg = (err && err.message) ? err.message : '載入資料時發生未知錯誤。';
+          graph.innerHTML = `<div style="padding:16px;color:#b00020">${msg}</div>`;
+        })
+        .getGraphData();
     </script>
   </body>
 </html>
