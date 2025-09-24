@@ -11,9 +11,81 @@
 
     <style>
       :root { color-scheme: light dark; }
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 16px; }
-      h2 { margin: 0 0 .5rem; }
-      #graph { width: 100%; max-width: 100%; overflow: auto; border: 1px solid #ccc; border-radius: 6px; background: Canvas; transition: margin-right 0.3s ease; }
+      body { 
+        font-family: 'Times New Roman', 'Georgia', serif; 
+        margin: 0; 
+        padding: 20px; 
+        background: #f4f1e8; 
+        background-image: 
+          radial-gradient(circle at 20% 50%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 40% 80%, rgba(101, 67, 33, 0.1) 0%, transparent 50%);
+        min-height: 100vh;
+      }
+      
+      .header {
+        background: #faf8f3;
+        border: 3px solid #8b4513;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 
+          0 4px 8px rgba(0, 0, 0, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      
+      .header::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        background: linear-gradient(45deg, #8b4513, #a0522d, #8b4513);
+        border-radius: 8px;
+        z-index: -1;
+      }
+      
+      h2 { 
+        margin: 0; 
+        font-size: 2.2rem;
+        font-weight: bold;
+        color: #8b4513;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        letter-spacing: 1px;
+        font-family: 'Times New Roman', serif;
+      }
+      
+      .title-section {
+        flex: 1;
+        min-width: 300px;
+      }
+      
+      .subtitle {
+        color: #654321;
+        font-size: 1rem;
+        font-weight: normal;
+        font-style: italic;
+        margin-top: 5px;
+      }
+      #graph { 
+        width: 100%; 
+        max-width: 100%; 
+        overflow: auto; 
+        border: 3px solid #8b4513; 
+        border-radius: 8px; 
+        background: #faf8f3; 
+        transition: margin-right 0.3s ease;
+        box-shadow: 
+          0 4px 8px rgba(0, 0, 0, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      }
       #zoomInner { transform-origin: 0 0; display: inline-block; position: relative; }
       #zoomInner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png"); background-repeat: no-repeat; background-position: center center; background-size: cover; opacity: 0.3; z-index: -1; }
       #zoomInner svg { background: transparent !important; position: relative; z-index: 1; }
@@ -106,9 +178,44 @@
         flex: 1;
         line-height: 1.5;
         background: #f8f9fa;
-        padding: 10px;
+        padding: 10px 50px 10px 10px; /* 右邊增加內邊距避免被按鈕遮住 */
         border-radius: 6px;
         border-left: 3px solid #007bff;
+        position: relative;
+        min-height: 40px; /* 確保有足夠高度容納按鈕 */
+      }
+
+      .copy-button {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        z-index: 10; /* 確保按鈕在最上層 */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* 添加陰影讓按鈕更明顯 */
+      }
+
+      .copy-button:hover {
+        background: #0056b3;
+        transform: scale(1.05);
+      }
+
+      .copy-button:active {
+        transform: scale(0.95);
+      }
+
+      .copy-button.copied {
+        background: #28a745;
+      }
+
+      .copy-button.copied::after {
+        content: " ✓";
       }
 
       /* 狀態標籤樣式 */
@@ -146,29 +253,47 @@
 
       /* 搜尋功能樣式 */
       .search-container {
-        margin: 1rem 0;
+        margin: 0;
         position: relative;
+        flex: 1;
+        max-width: 400px;
       }
 
       .search-box {
         position: relative;
-        max-width: 400px;
+        width: 100%;
       }
 
       #searchInput {
         width: 100%;
         padding: 12px 16px;
-        border: 2px solid #ddd;
-        border-radius: 8px;
+        border: 2px solid #8b4513;
+        border-radius: 4px;
         font-size: 16px;
         box-sizing: border-box;
-        transition: border-color 0.3s ease;
+        transition: all 0.3s ease;
+        background: #faf8f3;
+        color: #8b4513;
+        font-family: 'Times New Roman', serif;
+        box-shadow: 
+          inset 0 2px 4px rgba(0, 0, 0, 0.1),
+          0 2px 4px rgba(0, 0, 0, 0.2);
       }
 
       #searchInput:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        border-color: #a0522d;
+        box-shadow: 
+          inset 0 2px 4px rgba(0, 0, 0, 0.1),
+          0 0 0 3px rgba(160, 82, 45, 0.3),
+          0 2px 4px rgba(0, 0, 0, 0.2);
+        background: #fffef7;
+      }
+
+      #searchInput::placeholder {
+        color: #8b7355;
+        font-weight: normal;
+        font-style: italic;
       }
 
       .search-results {
@@ -243,9 +368,11 @@
         right: -350px;
         width: 350px;
         height: 100vh;
-        background: #f8f9fa;
-        border-left: 1px solid #dee2e6;
-        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        background: #faf8f3;
+        border-left: 3px solid #8b4513;
+        box-shadow: 
+          -4px 0 12px rgba(0, 0, 0, 0.3),
+          inset 1px 0 0 rgba(255, 255, 255, 0.2);
         transition: right 0.3s ease;
         z-index: 1000;
         overflow-y: auto;
@@ -261,31 +388,42 @@
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #007bff;
-        color: white;
-        border: none;
-        border-radius: 50%;
+        background: #8b4513;
+        color: #faf8f3;
+        border: 2px solid #654321;
+        border-radius: 8px;
         width: 50px;
         height: 50px;
-        font-size: 20px;
+        font-size: 18px;
         cursor: pointer;
-        box-shadow: 0 2px 10px rgba(0, 123, 255, 0.3);
+        box-shadow: 
+          0 4px 8px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.2);
         transition: all 0.3s ease;
         z-index: 1001;
+        font-family: 'Times New Roman', serif;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
       }
 
       .sidebar-toggle:hover {
-        background: #0056b3;
-        transform: scale(1.1);
+        background: #a0522d;
+        border-color: #8b4513;
+        transform: scale(1.05);
+        box-shadow: 
+          0 6px 12px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
       }
 
       .sidebar-toggle.open {
         right: 370px;
-        background: #dc3545;
+        background: #654321;
+        border-color: #8b4513;
       }
 
       .sidebar-toggle.open:hover {
-        background: #c82333;
+        background: #8b4513;
+        border-color: #654321;
       }
 
       .sidebar-header {
@@ -325,18 +463,23 @@
       .control-group {
         margin-bottom: 25px;
         padding: 15px;
-        background: white;
+        background: #f4f1e8;
+        border: 2px solid #8b4513;
         border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        box-shadow: 
+          0 2px 4px rgba(0, 0, 0, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
       }
 
       .control-group-title {
         font-size: 14px;
         font-weight: bold;
-        color: #495057;
+        color: #8b4513;
         margin-bottom: 12px;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        font-family: 'Times New Roman', serif;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
       }
 
       .control-item {
@@ -351,8 +494,9 @@
         display: block;
         margin-bottom: 5px;
         font-size: 13px;
-        color: #666;
+        color: #654321;
         font-weight: 500;
+        font-family: 'Times New Roman', serif;
       }
 
       .control-item input[type="range"] {
@@ -363,44 +507,58 @@
       .control-item select {
         width: 100%;
         padding: 8px 12px;
-        border: 1px solid #ced4da;
+        border: 2px solid #8b4513;
         border-radius: 4px;
-        background: white;
+        background: #faf8f3;
         font-size: 14px;
+        color: #8b4513;
+        font-family: 'Times New Roman', serif;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
       }
 
       .control-item button {
         width: 100%;
         padding: 8px 12px;
-        border: 1px solid #ced4da;
+        border: 2px solid #8b4513;
         border-radius: 4px;
-        background: white;
+        background: #faf8f3;
         cursor: pointer;
         font-size: 14px;
+        color: #8b4513;
+        font-family: 'Times New Roman', serif;
+        font-weight: bold;
         transition: all 0.2s ease;
+        box-shadow: 
+          0 2px 4px rgba(0, 0, 0, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.3);
       }
 
       .control-item button:hover {
-        background: #f8f9fa;
-        border-color: #007bff;
+        background: #a0522d;
+        color: #faf8f3;
+        border-color: #654321;
+        box-shadow: 
+          0 3px 6px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.2);
       }
 
       .control-item button.danger {
-        background: #dc3545;
-        color: white;
-        border-color: #dc3545;
+        background: #8b4513;
+        color: #faf8f3;
+        border-color: #654321;
       }
 
       .control-item button.danger:hover {
-        background: #c82333;
-        border-color: #c82333;
+        background: #654321;
+        border-color: #8b4513;
       }
 
       .value-display {
         font-size: 12px;
-        color: #007bff;
+        color: #8b4513;
         font-weight: bold;
         margin-left: 10px;
+        font-family: 'Times New Roman', serif;
       }
 
       /* 響應式設計優化 */
@@ -435,13 +593,19 @@
     </style>
   </head>
   <body>
-    <h2>Google Apps Script Graphviz Demo</h2>
-
-    <!-- 搜尋功能 -->
-    <div class="search-container">
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="搜尋節點..." autocomplete="off" />
-        <div id="searchResults" class="search-results"></div>
+    <!-- 頁面標題和搜尋區域 -->
+    <div class="header">
+      <div class="title-section">
+        <h2>Google Apps Script Odyssey</h2>
+        <div class="subtitle">探索 Google Apps Script 學習路徑的視覺化地圖</div>
+      </div>
+      
+      <!-- 搜尋功能 -->
+      <div class="search-container">
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="搜尋節點..." autocomplete="off" />
+          <div id="searchResults" class="search-results"></div>
+        </div>
       </div>
     </div>
 
@@ -487,7 +651,7 @@
           <label>Layout 引擎</label>
           <select id="layoutSelect">
             <option value="dot">dot（階層式）</option>
-            <option value="neato">neato（力導向）</option>
+            <option value="neato" selected>neato（力導向）</option>
             <option value="fdp">fdp（力導向）</option>
             <option value="twopi">twopi（放射狀）</option>
             <option value="circo">circo（圓環）</option>
@@ -578,7 +742,7 @@
         origH: null,
         fontSize: 14,
         origFontSize: 14,
-        engine: localStorage.getItem("gv_engine") || "dot",
+        engine: localStorage.getItem("gv_engine") || "neato",
         rankdir: localStorage.getItem("gv_rankdir") || "TB",
         splines: localStorage.getItem("gv_splines") || "curved",
         nodeShape: localStorage.getItem("gv_nodeShape") || "ellipse",
@@ -1219,6 +1383,72 @@
         }
       }
 
+      // --- 複製 Prompt 到剪貼簿 ---
+      async function copyPromptToClipboard(promptText) {
+        try {
+          // 使用現代的 Clipboard API
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(promptText);
+            showCopySuccess();
+          } else {
+            // 降級方案：使用傳統的 document.execCommand
+            const textArea = document.createElement('textarea');
+            textArea.value = promptText;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            if (successful) {
+              showCopySuccess();
+            } else {
+              showCopyError();
+            }
+          }
+        } catch (err) {
+          console.error('複製失敗:', err);
+          showCopyError();
+        }
+      }
+
+      // 顯示複製成功回饋
+      function showCopySuccess() {
+        // 找到所有複製按鈕並更新狀態
+        const copyButtons = document.querySelectorAll('.copy-button');
+        copyButtons.forEach(button => {
+          const originalText = button.textContent;
+          button.classList.add('copied');
+          button.textContent = '已複製';
+          
+          // 2秒後恢復原狀
+          setTimeout(() => {
+            button.classList.remove('copied');
+            button.textContent = originalText;
+          }, 2000);
+        });
+      }
+
+      // 顯示複製錯誤回饋
+      function showCopyError() {
+        const copyButtons = document.querySelectorAll('.copy-button');
+        copyButtons.forEach(button => {
+          const originalText = button.textContent;
+          button.style.background = '#dc3545';
+          button.textContent = '複製失敗';
+          
+          // 2秒後恢復原狀
+          setTimeout(() => {
+            button.style.background = '';
+            button.textContent = originalText;
+          }, 2000);
+        });
+      }
+
       // --- 自定義彈出視窗 ---
       function showCustomModal(nodeDetail) {
         console.log("顯示節點詳情:", nodeDetail);
@@ -1226,16 +1456,12 @@
         const title = document.getElementById('modalTitle');
         const content = document.getElementById('modalContent');
         
-        title.textContent = `節點: ${nodeDetail.id}`;
+        title.textContent = `${nodeDetail.label}`;
         content.innerHTML = `
           <div class="node-info">
             <div class="info-row">
-              <span class="info-label">標籤:</span>
-              <span class="info-value">${nodeDetail.label}</span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">狀態:</span>
-              <span class="info-value status-${nodeDetail.status.toLowerCase()}">${nodeDetail.statusText}</span>
+              <span class="info-label">ID:</span>
+              <span class="info-value">${nodeDetail.id}</span>
             </div>
             ${nodeDetail.attribute ? `
             <div class="info-row">
@@ -1245,7 +1471,10 @@
             ` : ''}
             <div class="info-row">
               <span class="info-label">提示:</span>
-              <div class="info-prompt">${nodeDetail.prompt}</div>
+              <div class="info-prompt">
+                ${nodeDetail.prompt}
+                <button class="copy-button" onclick="copyPromptToClipboard('${nodeDetail.prompt.replace(/'/g, "\\'")}')">複製</button>
+              </div>
             </div>
           </div>
         `;
