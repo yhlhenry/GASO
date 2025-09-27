@@ -44,6 +44,7 @@ function getGraphData() {
   let dot = `
     digraph G {
       graph [overlap=false];
+      node [fontsize=16, style=filled, fillcolor="#8b4513", color=none, fontcolor=white];
     `;
 
   // 儲存節點詳細資訊
@@ -89,8 +90,9 @@ function getGraphData() {
 
       // 如果 Attribute 有值，直接拼進去
       let extra = attr ? `, ${attr}` : "";
-      // 確保節點 ID 被正確設定，使用引號包圍 ID
-      dot += `  "${id}" [label="${label}", style=filled, fillcolor="${color}"${extra}];\n`;
+      // 確保節點 ID 被正確設定，使用引號包圍 ID，讓節點尺寸自動適應文字
+      // 移除邊框，使用棕色半透明漸層背景
+      dot += `  "${id}" [label="${label}", style=filled, fillcolor="#8b4513", color=none, fontsize=16, fontcolor=white${extra}];\n`;
     }
   });
 

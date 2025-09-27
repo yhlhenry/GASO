@@ -38,6 +38,7 @@
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 20px;
+        padding-right: 90px; /* 為控制面板按鈕留出空間 */
       }
       
       .header::before {
@@ -90,6 +91,20 @@
       #zoomInner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png"); background-repeat: no-repeat; background-position: center center; background-size: cover; opacity: 0.3; z-index: -1; }
       #zoomInner svg { background: transparent !important; position: relative; z-index: 1; }
       #zoomInner svg polygon[fill="#ffffff"] { fill: transparent !important; }
+      
+      /* 節點半透明漸層效果 */
+      #zoomInner svg g.node rect,
+      #zoomInner svg g.node ellipse,
+      #zoomInner svg g.node polygon {
+        fill: url(#nodeGradient) !important;
+        stroke: none !important;
+      }
+      
+      #zoomInner svg g.node text {
+        fill: white !important;
+        font-weight: bold !important;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5) !important;
+      }
       .controls { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin: .5rem 0 1rem; }
       .controls input[type="range"] { width: 150px; }
       .controls button, .controls select { padding: .35rem .6rem; border: 1px solid #bbb; background: #f8f8f8; border-radius: 6px; cursor: pointer; }
@@ -264,9 +279,21 @@
         width: 100%;
       }
 
+      .search-box::before {
+        content: '🔍';
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 16px;
+        color: #8b7355;
+        pointer-events: none;
+        z-index: 1;
+      }
+
       #searchInput {
         width: 100%;
-        padding: 12px 16px;
+        padding: 12px 40px 12px 16px; /* 右邊留出空間給放大鏡圖示 */
         border: 2px solid #8b4513;
         border-radius: 4px;
         font-size: 16px;
@@ -385,7 +412,7 @@
       }
 
       .sidebar-toggle {
-        position: fixed;
+        position: absolute;
         top: 20px;
         right: 20px;
         background: #8b4513;
@@ -416,7 +443,7 @@
       }
 
       .sidebar-toggle.open {
-        right: 370px;
+        right: 20px;
         background: #654321;
         border-color: #8b4513;
       }
@@ -679,7 +706,7 @@
           <label>節點形狀</label>
           <select id="nodeShapeSelect">
             <option value="ellipse">橢圓形</option>
-            <option value="box">矩形</option>
+            <option value="box" selected>矩形</option>
             <option value="diamond">菱形</option>
             <option value="triangle">三角形</option>
             <option value="circle">圓形</option>
@@ -745,7 +772,7 @@
         engine: localStorage.getItem("gv_engine") || "neato",
         rankdir: localStorage.getItem("gv_rankdir") || "TB",
         splines: localStorage.getItem("gv_splines") || "curved",
-        nodeShape: localStorage.getItem("gv_nodeShape") || "ellipse",
+        nodeShape: localStorage.getItem("gv_nodeShape") || "box",
         dot: "",
         nodeDetails: [], // 儲存節點詳細資訊
         edgeDetails: [], // 儲存邊詳細資訊
@@ -953,6 +980,37 @@
           svg.removeAttribute("width");
           svg.removeAttribute("height");
 
+          // 添加漸層定義
+          const defs = svg.querySelector('defs') || svg.insertBefore(document.createElementNS('http://www.w3.org/2000/svg', 'defs'), svg.firstChild);
+          
+          // 創建漸層定義（如果不存在）
+          if (!defs.querySelector('#nodeGradient')) {
+            const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'radialGradient');
+            gradient.setAttribute('id', 'nodeGradient');
+            gradient.setAttribute('cx', '50%');
+            gradient.setAttribute('cy', '50%');
+            gradient.setAttribute('r', '50%');
+            
+            const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+            stop1.setAttribute('offset', '0%');
+            stop1.setAttribute('stop-color', 'rgba(160, 82, 45, 1.0)');
+            
+            const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+            stop2.setAttribute('offset', '100%');
+            stop2.setAttribute('stop-color', 'rgba(139, 69, 19, 0)');
+            
+            gradient.appendChild(stop1);
+            gradient.appendChild(stop2);
+            defs.appendChild(gradient);
+          }
+
+          // 直接修改所有節點的 fill 屬性為漸層
+          const nodeElements = svg.querySelectorAll('g.node polygon, g.node rect, g.node ellipse');
+          nodeElements.forEach(element => {
+            element.setAttribute('fill', 'url(#nodeGradient)');
+            element.setAttribute('stroke', 'none');
+          });
+
           zoomInner.innerHTML = "";
           zoomInner.appendChild(svg);
 
@@ -976,6 +1034,38 @@
             dotToUse = applyNodeShapeToDot(dotToUse, state.nodeShape);
             dotToUse = (state.engine === 'dot') ? applyRankdirToDot(dotToUse, state.rankdir) : dotToUse;
             const svg = await viz.renderSVGElement(dotToUse, { engine: state.engine });
+            
+            // 添加漸層定義
+            const defs = svg.querySelector('defs') || svg.insertBefore(document.createElementNS('http://www.w3.org/2000/svg', 'defs'), svg.firstChild);
+            
+            // 創建漸層定義（如果不存在）
+            if (!defs.querySelector('#nodeGradient')) {
+              const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'radialGradient');
+              gradient.setAttribute('id', 'nodeGradient');
+              gradient.setAttribute('cx', '50%');
+              gradient.setAttribute('cy', '50%');
+              gradient.setAttribute('r', '50%');
+              
+              const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+              stop1.setAttribute('offset', '0%');
+              stop1.setAttribute('stop-color', 'rgba(160, 82, 45, 0.9)');
+              
+              const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+              stop2.setAttribute('offset', '100%');
+              stop2.setAttribute('stop-color', 'rgba(139, 69, 19, 0.4)');
+              
+              gradient.appendChild(stop1);
+              gradient.appendChild(stop2);
+              defs.appendChild(gradient);
+            }
+
+            // 直接修改所有節點的 fill 屬性為漸層
+            const nodeElements = svg.querySelectorAll('g.node polygon, g.node rect, g.node ellipse');
+            nodeElements.forEach(element => {
+              element.setAttribute('fill', 'url(#nodeGradient)');
+              element.setAttribute('stroke', 'none');
+            });
+            
             zoomInner.innerHTML = "";
             zoomInner.appendChild(svg);
             
