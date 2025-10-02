@@ -15,12 +15,16 @@
         font-family: 'Times New Roman', 'Georgia', serif; 
         margin: 0; 
         padding: 20px; 
+        padding-bottom: 20px; /* 減少底部 padding */
         background: #f4f1e8; 
         background-image: 
           radial-gradient(circle at 20% 50%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
           radial-gradient(circle at 80% 20%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
           radial-gradient(circle at 40% 80%, rgba(101, 67, 33, 0.1) 0%, transparent 50%);
         min-height: 100vh;
+        overflow-x: auto;
+        overflow-y: auto;
+        box-sizing: border-box;
       }
       
       .header {
@@ -77,7 +81,7 @@
       }
       #graph { 
         width: 100%; 
-        max-width: 100%; 
+        max-width: none; 
         overflow: auto; 
         border: 3px solid #8b4513; 
         border-radius: 8px; 
@@ -86,9 +90,28 @@
         box-shadow: 
           0 4px 8px rgba(0, 0, 0, 0.2),
           inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        min-height: 400px;
+        position: relative;
       }
-      #zoomInner { transform-origin: 0 0; display: inline-block; position: relative; }
-      #zoomInner::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png"); background-repeat: no-repeat; background-position: center center; background-size: cover; opacity: 0.3; z-index: -1; }
+      #zoomInner { 
+        transform-origin: 0 0; 
+        display: inline-block; 
+        position: relative;
+      }
+      #zoomInner::before { 
+        content: ''; 
+        position: absolute; 
+        top: -100px; 
+        left: -100px; 
+        right: -100px; 
+        bottom: -100px; 
+        background-image: url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png"); 
+        background-repeat: no-repeat; 
+        background-position: center center; 
+        background-size: cover; 
+        opacity: 0.3; 
+        z-index: -1; 
+      }
       #zoomInner svg { background: transparent !important; position: relative; z-index: 1; }
       #zoomInner svg polygon[fill="#ffffff"] { fill: transparent !important; }
       
@@ -412,7 +435,7 @@
       }
 
       .sidebar-toggle {
-        position: absolute;
+        position: fixed;
         top: 20px;
         right: 20px;
         background: #8b4513;
@@ -588,6 +611,133 @@
         font-family: 'Times New Roman', serif;
       }
 
+      /* 載入動畫樣式 */
+      .loading-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #f4f1e8;
+        background-image: 
+          radial-gradient(circle at 20% 50%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 40% 80%, rgba(101, 67, 33, 0.1) 0%, transparent 50%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: opacity 0.5s ease-out;
+      }
+
+      .loading-container.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .loading-spinner {
+        width: 80px;
+        height: 80px;
+        border: 6px solid #8b4513;
+        border-top: 6px solid #a0522d;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .loading-text {
+        font-family: 'Times New Roman', serif;
+        font-size: 24px;
+        font-weight: bold;
+        color: #8b4513;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        margin-bottom: 20px;
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+
+      .loading-dots {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .loading-dot {
+        width: 12px;
+        height: 12px;
+        background: #8b4513;
+        border-radius: 50%;
+        animation: bounce 1.4s ease-in-out infinite both;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+      .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+      .loading-dot:nth-child(3) { animation-delay: 0s; }
+
+      @keyframes bounce {
+        0%, 80%, 100% {
+          transform: scale(0);
+        }
+        40% {
+          transform: scale(1);
+        }
+      }
+
+      .loading-progress {
+        width: 300px;
+        height: 6px;
+        background: rgba(139, 69, 19, 0.2);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 20px;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      .loading-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #8b4513, #a0522d, #8b4513);
+        background-size: 200% 100%;
+        animation: progressMove 2s ease-in-out infinite;
+        border-radius: 3px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+
+      @keyframes progressMove {
+        0% { 
+          width: 0%;
+          background-position: 0% 50%;
+        }
+        50% { 
+          width: 70%;
+          background-position: 100% 50%;
+        }
+        100% { 
+          width: 100%;
+          background-position: 0% 50%;
+        }
+      }
+
+      .loading-subtitle {
+        font-family: 'Times New Roman', serif;
+        font-size: 16px;
+        color: #654321;
+        font-style: italic;
+        margin-top: 15px;
+        opacity: 0.8;
+      }
+
       /* 響應式設計優化 */
       @media (max-width: 768px) {
         .sidebar {
@@ -616,10 +766,33 @@
         #nodeShapeSelect {
           min-width: 100%;
         }
+
+        .loading-text {
+          font-size: 20px;
+        }
+
+        .loading-progress {
+          width: 250px;
+        }
       }
     </style>
   </head>
   <body>
+    <!-- 載入動畫 -->
+    <div class="loading-container" id="loadingContainer">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在載入學習地圖</div>
+      <div class="loading-dots">
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+        <div class="loading-dot"></div>
+      </div>
+      <div class="loading-progress">
+        <div class="loading-progress-bar"></div>
+      </div>
+      <div class="loading-subtitle">探索 Google Apps Script 的無限可能</div>
+    </div>
+
     <!-- 頁面標題和搜尋區域 -->
     <div class="header">
       <div class="title-section">
@@ -771,7 +944,7 @@
         origFontSize: 14,
         engine: localStorage.getItem("gv_engine") || "neato",
         rankdir: localStorage.getItem("gv_rankdir") || "TB",
-        splines: localStorage.getItem("gv_splines") || "curved",
+        splines: localStorage.getItem("gv_splines") || "line",
         nodeShape: localStorage.getItem("gv_nodeShape") || "box",
         dot: "",
         nodeDetails: [], // 儲存節點詳細資訊
@@ -871,6 +1044,13 @@
         zoomInner.style.transform = `scale(${scale})`;
         zoomLabel.textContent = `${state.scalePct}%`;
         zoomRange.value = String(state.scalePct);
+        
+        // 縮放後重新調整頁面大小
+        if (state.origW && state.origH) {
+          const scaledWidth = state.origW * scale;
+          const scaledHeight = state.origH * scale;
+          adjustPageSizeToGraph(scaledWidth, scaledHeight);
+        }
       }
       function fitToWidth() {
         if (!state.origW) return;
@@ -949,7 +1129,7 @@
 
       // --- 依指定引擎渲染 DOT ---
       async function renderGraph() {
-        if (!state.dot) return;
+        if (!state.dot) return Promise.resolve();
         try {
           console.log(`[render] engine=%s, splines=%s, nodeShape=%s`, state.engine, state.splines, state.nodeShape);
           const src = state.dot;
@@ -963,6 +1143,15 @@
           const origW = rawW ? parseFloat(rawW) : (svg.viewBox?.baseVal?.width || svg.getBBox().width);
           const origH = rawH ? parseFloat(rawH) : (svg.viewBox?.baseVal?.height || svg.getBBox().height);
           state.origW = origW; state.origH = origH;
+          
+          console.log(`=== Graphviz 尺寸資訊 ===`);
+          console.log(`原始寬度 (origW): ${origW}px`);
+          console.log(`原始高度 (origH): ${origH}px`);
+          console.log(`SVG width 屬性: ${rawW}`);
+          console.log(`SVG height 屬性: ${rawH}`);
+          console.log(`SVG viewBox: ${svg.viewBox?.baseVal?.width || 'N/A'} x ${svg.viewBox?.baseVal?.height || 'N/A'}`);
+          console.log(`SVG getBBox: ${svg.getBBox().width} x ${svg.getBBox().height}`);
+          console.log(`========================`);
 
           const firstText = svg.querySelector("text");
           if (firstText && state.origFontSize === 14 && state.fontSize === 14) {
@@ -972,13 +1161,25 @@
             fontLabel.textContent = `${state.origFontSize}px`;
           }
 
-          zoomInner.style.width = origW + "px";
-          zoomInner.style.height = origH + "px";
+          // 設置原始尺寸，但限制在合理範圍內
+          const maxReasonableWidth = window.innerWidth * 3; // 最大寬度為螢幕寬度的3倍
+          const maxReasonableHeight = window.innerHeight * 3; // 最大高度為螢幕高度的3倍
+          
+          const finalWidth = Math.min(origW, maxReasonableWidth);
+          const finalHeight = Math.min(origH, maxReasonableHeight);
+          
+          zoomInner.style.width = finalWidth + "px";
+          zoomInner.style.height = finalHeight + "px";
+          
+          console.log(`原始尺寸: ${origW}x${origH}, 限制後尺寸: ${finalWidth}x${finalHeight}`);
 
           svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
           if (!svg.getAttribute("viewBox")) svg.setAttribute("viewBox", `0 0 ${origW} ${origH}`);
           svg.removeAttribute("width");
           svg.removeAttribute("height");
+
+          // 動態調整頁面大小以適應地圖（使用限制後的尺寸）
+          adjustPageSizeToGraph(finalWidth, finalHeight);
 
           // 添加漸層定義
           const defs = svg.querySelector('defs') || svg.insertBefore(document.createElementNS('http://www.w3.org/2000/svg', 'defs'), svg.firstChild);
@@ -1083,6 +1284,7 @@
             graph.textContent = `Graph render failed with engine "${state.engine}".`;
           }
         }
+        return Promise.resolve();
       }
 
       // --- UI 綁定 ---
@@ -1721,6 +1923,88 @@
         });
       }
 
+      // --- 載入動畫控制 ---
+      function hideLoadingAnimation() {
+        const loadingContainer = document.getElementById('loadingContainer');
+        if (loadingContainer) {
+          loadingContainer.classList.add('hidden');
+          // 動畫完成後移除元素
+          setTimeout(() => {
+            loadingContainer.style.display = 'none';
+          }, 500);
+        }
+      }
+
+      function showLoadingAnimation() {
+        const loadingContainer = document.getElementById('loadingContainer');
+        if (loadingContainer) {
+          loadingContainer.style.display = 'flex';
+          loadingContainer.classList.remove('hidden');
+        }
+      }
+
+      // --- 動態調整頁面大小 ---
+      function adjustPageSizeToGraph(graphWidth, graphHeight) {
+        // 計算需要的頁面高度
+        const header = document.querySelector('.header');
+        const headerHeight = header ? header.offsetHeight + 40 : 0; // 40px 是 header 的 margin
+        const graphPadding = 40; // graph 容器的 padding
+        const bodyPadding = 40; // body 的 padding (20px * 2)
+        
+        // 智能處理大地圖
+        const isLargeGraph = graphWidth > window.innerWidth * 2 || graphHeight > window.innerHeight * 2;
+        let minPageHeight;
+        
+        if (isLargeGraph) {
+          // 大地圖：限制頁面高度，讓用戶可以滾動查看
+          const maxPageHeight = window.innerHeight * 1.5; // 最大頁面高度為螢幕高度的1.5倍
+          const requiredHeight = headerHeight + graphHeight + graphPadding + bodyPadding + 20;
+          minPageHeight = Math.min(requiredHeight, maxPageHeight);
+          
+          // 啟用滾動
+          document.body.style.overflowX = 'auto';
+          document.body.style.overflowY = 'auto';
+        } else {
+          // 小地圖：正常處理
+          minPageHeight = headerHeight + graphHeight + graphPadding + bodyPadding + 20;
+          document.body.style.overflowX = 'hidden';
+          document.body.style.overflowY = 'auto';
+        }
+        
+        // 設置頁面高度
+        document.body.style.minHeight = minPageHeight + 'px';
+        document.body.style.height = 'auto';
+        
+        console.log(`頁面大小調整: 地圖尺寸 ${graphWidth}x${graphHeight}, 是否大地圖: ${isLargeGraph}, 頁面高度: ${minPageHeight}px`);
+      }
+
+      // --- 移除多餘空白 ---
+      function removeExcessWhitespace() {
+        const graph = document.getElementById('graph');
+        const header = document.querySelector('.header');
+        
+        if (!graph || !header) return;
+        
+        // 計算實際需要的頁面高度
+        const headerHeight = header.offsetHeight + 40; // header + margin
+        const graphHeight = graph.offsetHeight;
+        const bodyPadding = 40; // body padding
+        const requiredHeight = headerHeight + graphHeight + bodyPadding + 20; // 20px 緩衝
+        
+        // 設置精確的頁面高度
+        document.body.style.minHeight = requiredHeight + 'px';
+        document.body.style.height = requiredHeight + 'px';
+        
+        // 確保沒有多餘的底部空白
+        const currentScrollHeight = document.body.scrollHeight;
+        if (currentScrollHeight > requiredHeight + 100) {
+          // 如果還有太多空白，進一步調整
+          document.body.style.height = (requiredHeight - 50) + 'px';
+        }
+        
+        console.log(`空白移除: 需要高度 ${requiredHeight}px, 當前高度 ${currentScrollHeight}px`);
+      }
+
       // --- 取得 DOT 並渲染（含 log） ---
       function applyBackgroundFromConfig(url) {
         if (typeof url === 'string' && url.trim()) {
@@ -1731,6 +2015,9 @@
         }
       }
 
+      // 顯示載入動畫
+      showLoadingAnimation();
+
       google.script.run
         .withSuccessHandler(function (data) {
           console.log("Graphviz 資料：", data);
@@ -1739,12 +2026,22 @@
           state.edgeDetails = data.edgeDetails;
           state.adjacencyList = data.adjacencyList;
           applyBackgroundFromConfig(data.backgroundImageUrl);
-          renderGraph();
+          
+          // 渲染完成後隱藏載入動畫
+          renderGraph().then(() => {
+            hideLoadingAnimation();
+            // 延遲一點時間確保 DOM 完全渲染後再調整
+            setTimeout(() => {
+              removeExcessWhitespace();
+            }, 100);
+          });
         })
         .withFailureHandler(function (err) {
           console.error('取得資料失敗：', err);
           const msg = (err && err.message) ? err.message : '載入資料時發生未知錯誤。';
           graph.innerHTML = `<div style="padding:16px;color:#b00020">${msg}</div>`;
+          // 即使失敗也要隱藏載入動畫
+          hideLoadingAnimation();
         })
         .getGraphData();
     </script>

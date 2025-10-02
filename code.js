@@ -43,7 +43,7 @@ function getGraphData() {
 
   let dot = `
     digraph G {
-      graph [overlap=false];
+      graph [overlap=false, nodesep=0.3, ranksep=0.3];
       node [fontsize=16, style=filled, fillcolor="#8b4513", color=none, fontcolor=white];
     `;
 
