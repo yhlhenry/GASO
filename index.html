@@ -82,7 +82,7 @@
       #graph { 
         width: 100%; 
         max-width: none; 
-        overflow: auto; 
+        overflow: hidden; /* 改為 hidden，讓拖曳更流暢 */
         border: 3px solid #8b4513; 
         border-radius: 8px; 
         background: #faf8f3; 
@@ -92,11 +92,35 @@
           inset 0 1px 0 rgba(255, 255, 255, 0.3);
         min-height: 400px;
         position: relative;
+        cursor: grab;
+        user-select: none;
       }
+      
+      #graph.dragging {
+        cursor: grabbing;
+      }
+      
+      #graph.drag-mode {
+        cursor: grab;
+      }
+      
+      #graph.drag-mode.dragging {
+        cursor: grabbing;
+      }
+      
       #zoomInner { 
         transform-origin: 0 0; 
         display: inline-block; 
         position: relative;
+        transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      }
+      
+      #zoomInner.dragging {
+        transition: none;
+      }
+      
+      #zoomInner.zooming {
+        transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
       #zoomInner::before { 
         content: ''; 
@@ -738,6 +762,94 @@
         opacity: 0.8;
       }
 
+      /* 個人化資訊表單樣式 */
+      .custom-info-form {
+        margin-top: 20px;
+      }
+
+      .form-group {
+        margin-bottom: 25px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #8b4513;
+        font-size: 16px;
+        font-family: 'Times New Roman', serif;
+      }
+
+      .input-group {
+        position: relative;
+      }
+
+      .form-select, .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #8b4513;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: 'Times New Roman', serif;
+        background: #faf8f3;
+        color: #8b4513;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+      }
+
+      .form-select:focus, .form-input:focus {
+        outline: none;
+        border-color: #a0522d;
+        box-shadow: 0 0 0 3px rgba(160, 82, 45, 0.3);
+        background: #fffef7;
+      }
+
+      .form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+      }
+
+      .btn-primary, .btn-secondary {
+        padding: 12px 24px;
+        border: 2px solid;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: 'Times New Roman', serif;
+        min-width: 100px;
+      }
+
+      .btn-primary {
+        background: #8b4513;
+        color: #faf8f3;
+        border-color: #654321;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .btn-primary:hover {
+        background: #a0522d;
+        border-color: #8b4513;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn-secondary {
+        background: #faf8f3;
+        color: #8b4513;
+        border-color: #8b4513;
+      }
+
+      .btn-secondary:hover {
+        background: #8b4513;
+        color: #faf8f3;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+
       /* 響應式設計優化 */
       @media (max-width: 768px) {
         .sidebar {
@@ -834,7 +946,10 @@
           <button id="zoomIn">放大 (＋)</button>
         </div>
         <div class="control-item">
-          <button id="fitWidth">適應螢幕寬度</button>
+          <button id="fitWidth">觀看全地圖</button>
+        </div>
+        <div class="control-item">
+          <button id="goToStart">回到起點</button>
         </div>
         <div class="control-item">
           <button id="resetZoom">重設縮放</button>
@@ -920,10 +1035,111 @@
           <button id="clearPathHighlight" class="danger">清除路徑高亮</button>
         </div>
       </div>
+
+      <!-- 個人化設定組 -->
+      <div class="control-group">
+        <div class="control-group-title">個人化設定</div>
+        <div class="control-item">
+          <button id="editCustomInfo">編輯個人資訊</button>
+        </div>
+        <div class="control-item">
+          <button id="clearCustomInfo" class="danger">清除個人資訊</button>
+        </div>
+        <div class="control-item">
+          <small style="color: #666;" id="currentUserInfo">未設定個人資訊</small>
+        </div>
+      </div>
+
     </div>
 
     <div id="graph">
       <div id="zoomInner"></div>
+    </div>
+    
+
+    <!-- 個人化資訊輸入表單 -->
+    <div id="customInfoModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <span class="close" id="customInfoClose">&times;</span>
+        <h3>個人化設定</h3>
+        <div class="custom-info-form">
+          <div class="form-group">
+            <label for="userRole">我是負責</label>
+            <div class="input-group">
+              <select id="userRoleSelect" class="form-select">
+                <option value="">請選擇...</option>
+                <option value="專案管理">專案管理</option>
+                <option value="資料分析">資料分析</option>
+                <option value="自動化流程">自動化流程</option>
+                <option value="報表製作">報表製作</option>
+                <option value="系統整合">系統整合</option>
+                <option value="人力資源">人力資源</option>
+                <option value="財務管理">財務管理</option>
+                <option value="銷售業務">銷售業務</option>
+                <option value="行銷推廣">行銷推廣</option>
+                <option value="客戶服務">客戶服務</option>
+                <option value="營運管理">營運管理</option>
+                <option value="教育訓練">教育訓練</option>
+                <option value="品質管控">品質管控</option>
+                <option value="採購管理">採購管理</option>
+                <option value="其他">其他</option>
+              </select>
+              <input type="text" id="userRoleCustom" class="form-input" placeholder="請輸入您的職責..." style="display: none;">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="userTitle">的</label>
+            <div class="input-group">
+              <select id="userTitleSelect" class="form-select">
+                <option value="">請選擇...</option>
+                <option value="專案經理">專案經理</option>
+                <option value="資料分析師">資料分析師</option>
+                <option value="業務分析師">業務分析師</option>
+                <option value="系統管理員">系統管理員</option>
+                <option value="開發人員">開發人員</option>
+                <option value="人資專員">人資專員</option>
+                <option value="財務專員">財務專員</option>
+                <option value="會計師">會計師</option>
+                <option value="業務代表">業務代表</option>
+                <option value="行銷專員">行銷專員</option>
+                <option value="客服專員">客服專員</option>
+                <option value="營運專員">營運專員</option>
+                <option value="訓練專員">訓練專員</option>
+                <option value="品管專員">品管專員</option>
+                <option value="採購專員">採購專員</option>
+                <option value="主管">主管</option>
+                <option value="經理">經理</option>
+                <option value="總監">總監</option>
+                <option value="其他">其他</option>
+              </select>
+              <input type="text" id="userTitleCustom" class="form-input" placeholder="請輸入您的職位..." style="display: none;">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="gasLevel">我對 Google Apps Script 熟悉的程度是</label>
+            <div class="input-group">
+              <select id="gasLevelSelect" class="form-select">
+                <option value="">請選擇...</option>
+                <option value="完全初學者">完全初學者 - 從未使用過</option>
+                <option value="初學者">初學者 - 看過一些教學，但沒有實際操作</option>
+                <option value="有基礎">有基礎 - 寫過簡單的腳本，了解基本概念</option>
+                <option value="中級">中級 - 可以獨立完成中等複雜度的專案</option>
+                <option value="高級">高級 - 可以處理複雜的整合和優化</option>
+                <option value="專家">專家 - 可以指導他人並解決各種問題</option>
+                <option value="自訂">自訂</option>
+              </select>
+              <input type="text" id="gasLevelCustom" class="form-input" placeholder="請描述您的熟悉程度..." style="display: none;">
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button id="saveCustomInfo" class="btn-primary">儲存設定</button>
+            <button id="skipCustomInfo" class="btn-secondary">跳過</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 節點資訊彈出視窗 -->
@@ -951,7 +1167,22 @@
         edgeDetails: [], // 儲存邊詳細資訊
         adjacencyList: {}, // 鄰接表
         highlightedPath: [], // 當前高亮的路徑
-        backgroundImageUrl: "" // 從伺服器傳來的背景圖 URL（可覆寫預設）
+        backgroundImageUrl: "", // 從伺服器傳來的背景圖 URL（可覆寫預設）
+        // 拖曳相關狀態
+        isDragMode: true, // 預設啟用拖曳模式
+        isDragging: false,
+        dragStartX: 0,
+        dragStartY: 0,
+        dragOffsetX: 0,
+        dragOffsetY: 0,
+        currentTranslateX: 0,
+        currentTranslateY: 0,
+        // 個人化資訊狀態
+        userInfo: {
+          role: "",
+          title: "",
+          gasLevel: ""
+        }
       };
 
       const $ = (id) => document.getElementById(id);
@@ -975,6 +1206,12 @@
       if (rankdirSelect) rankdirSelect.value = state.rankdir;
       if (splinesSelect) splinesSelect.value = state.splines;
       if (nodeShapeSelect) nodeShapeSelect.value = state.nodeShape;
+      
+      // 初始化拖曳模式（預設啟用）
+      graph.classList.add('drag-mode');
+      
+      // 初始化個人化資訊
+      initCustomInfo();
 
       // --- 側邊面板控制 ---
       function toggleSidebar() {
@@ -1040,13 +1277,13 @@
       // --- 整體縮放 ---
       function applyZoom(pct) {
         state.scalePct = Math.max(10, Math.min(800, pct));
-        const scale = state.scalePct / 100;
-        zoomInner.style.transform = `scale(${scale})`;
+        applyDragTransform(); // 使用新的拖曳變換函數
         zoomLabel.textContent = `${state.scalePct}%`;
         zoomRange.value = String(state.scalePct);
         
         // 縮放後重新調整頁面大小
         if (state.origW && state.origH) {
+          const scale = state.scalePct / 100;
           const scaledWidth = state.origW * scale;
           const scaledHeight = state.origH * scale;
           adjustPageSizeToGraph(scaledWidth, scaledHeight);
@@ -1056,7 +1293,13 @@
         if (!state.origW) return;
         const containerWidth = graph.clientWidth;
         const scale = containerWidth / state.origW;
+        
+        // 重設拖曳位置到原點
+        state.currentTranslateX = 0;
+        state.currentTranslateY = 0;
+        
         applyZoom(Math.round(scale * 100));
+        console.log('觀看全地圖：已重設位置到原點');
       }
       function resetZoom() {
         applyZoom(100);
@@ -1221,6 +1464,11 @@
           applyZoom(state.scalePct);
           applyFontSize(state.fontSize);
           
+          // 重新應用拖曳變換（如果有的話）
+          if (state.currentTranslateX !== 0 || state.currentTranslateY !== 0) {
+            applyDragTransform();
+          }
+          
           // 自動適應螢幕寬度
           setTimeout(() => {
             fitToWidth();
@@ -1276,6 +1524,11 @@
             applyZoom(state.scalePct);
             applyFontSize(state.fontSize);
             
+            // 重新應用拖曳變換（如果有的話）
+            if (state.currentTranslateX !== 0 || state.currentTranslateY !== 0) {
+              applyDragTransform();
+            }
+            
             // 自動適應螢幕寬度
             setTimeout(() => {
               fitToWidth();
@@ -1299,12 +1552,503 @@
       $("fontSmaller").addEventListener("click", () => applyFontSize(state.fontSize - 2));
       $("resetFont").addEventListener("click", resetFont);
       $("clearPathHighlight").addEventListener("click", clearPathHighlight);
-
-      graph.addEventListener("wheel", (e) => {
-        if (!e.ctrlKey) return;
+      
+      // --- 個人化資訊功能 ---
+      
+      // 初始化個人化資訊
+      function initCustomInfo() {
+        // 檢查是否已經有儲存的個人化資訊
+        const savedUserInfo = localStorage.getItem('gaso_userInfo');
+        if (savedUserInfo) {
+          state.userInfo = JSON.parse(savedUserInfo);
+          console.log('已載入個人化資訊:', state.userInfo);
+          updateUserInfoDisplay();
+          return; // 如果已有資訊，不顯示表單
+        }
+        
+        // 顯示個人化資訊表單
+        showCustomInfoForm();
+      }
+      
+      // 更新個人資訊顯示
+      function updateUserInfoDisplay() {
+        const currentUserInfo = document.getElementById('currentUserInfo');
+        if (currentUserInfo) {
+          if (state.userInfo.role && state.userInfo.title && state.userInfo.gasLevel) {
+            currentUserInfo.textContent = `${state.userInfo.role} - ${state.userInfo.title} (${state.userInfo.gasLevel})`;
+            currentUserInfo.style.color = '#28a745';
+          } else {
+            currentUserInfo.textContent = '未設定個人資訊';
+            currentUserInfo.style.color = '#666';
+          }
+        }
+      }
+      
+      // 顯示個人化資訊表單
+      function showCustomInfoForm() {
+        const modal = document.getElementById('customInfoModal');
+        if (modal) {
+          modal.style.display = 'block';
+          bindCustomInfoEvents();
+        }
+      }
+      
+      // 關閉個人化資訊表單
+      function closeCustomInfoForm() {
+        const modal = document.getElementById('customInfoModal');
+        if (modal) {
+          modal.style.display = 'none';
+        }
+      }
+      
+      // 綁定個人化資訊表單事件
+      function bindCustomInfoEvents() {
+        const userRoleSelect = document.getElementById('userRoleSelect');
+        const userRoleCustom = document.getElementById('userRoleCustom');
+        const userTitleSelect = document.getElementById('userTitleSelect');
+        const userTitleCustom = document.getElementById('userTitleCustom');
+        const gasLevelSelect = document.getElementById('gasLevelSelect');
+        const gasLevelCustom = document.getElementById('gasLevelCustom');
+        const saveBtn = document.getElementById('saveCustomInfo');
+        const skipBtn = document.getElementById('skipCustomInfo');
+        const closeBtn = document.getElementById('customInfoClose');
+        
+        // 職責選擇事件
+        if (userRoleSelect) {
+          userRoleSelect.addEventListener('change', function() {
+            if (this.value === '其他') {
+              userRoleCustom.style.display = 'block';
+              userRoleCustom.focus();
+            } else {
+              userRoleCustom.style.display = 'none';
+              userRoleCustom.value = '';
+            }
+          });
+        }
+        
+        // 職位選擇事件
+        if (userTitleSelect) {
+          userTitleSelect.addEventListener('change', function() {
+            if (this.value === '其他') {
+              userTitleCustom.style.display = 'block';
+              userTitleCustom.focus();
+            } else {
+              userTitleCustom.style.display = 'none';
+              userTitleCustom.value = '';
+            }
+          });
+        }
+        
+        // 技能等級選擇事件
+        if (gasLevelSelect) {
+          gasLevelSelect.addEventListener('change', function() {
+            if (this.value === '自訂') {
+              gasLevelCustom.style.display = 'block';
+              gasLevelCustom.focus();
+            } else {
+              gasLevelCustom.style.display = 'none';
+              gasLevelCustom.value = '';
+            }
+          });
+        }
+        
+        // 儲存按鈕事件
+        if (saveBtn) {
+          saveBtn.addEventListener('click', function() {
+            saveCustomInfo();
+          });
+        }
+        
+        // 跳過按鈕事件
+        if (skipBtn) {
+          skipBtn.addEventListener('click', function() {
+            closeCustomInfoForm();
+          });
+        }
+        
+        // 關閉按鈕事件
+        if (closeBtn) {
+          closeBtn.addEventListener('click', function() {
+            closeCustomInfoForm();
+          });
+        }
+      }
+      
+      // 儲存個人化資訊
+      function saveCustomInfo() {
+        const userRoleSelect = document.getElementById('userRoleSelect');
+        const userRoleCustom = document.getElementById('userRoleCustom');
+        const userTitleSelect = document.getElementById('userTitleSelect');
+        const userTitleCustom = document.getElementById('userTitleCustom');
+        const gasLevelSelect = document.getElementById('gasLevelSelect');
+        const gasLevelCustom = document.getElementById('gasLevelCustom');
+        
+        // 取得使用者輸入的資訊
+        const role = userRoleSelect.value === '其他' ? userRoleCustom.value.trim() : userRoleSelect.value;
+        const title = userTitleSelect.value === '其他' ? userTitleCustom.value.trim() : userTitleSelect.value;
+        const gasLevel = gasLevelSelect.value === '自訂' ? gasLevelCustom.value.trim() : gasLevelSelect.value;
+        
+        // 驗證必填欄位
+        if (!role || !title || !gasLevel) {
+          alert('請填寫所有欄位');
+          return;
+        }
+        
+        // 儲存到 state 和 localStorage
+        state.userInfo = {
+          role: role,
+          title: title,
+          gasLevel: gasLevel
+        };
+        
+        localStorage.setItem('gaso_userInfo', JSON.stringify(state.userInfo));
+        
+        console.log('個人化資訊已儲存:', state.userInfo);
+        
+        // 更新顯示
+        updateUserInfoDisplay();
+        
+        // 關閉表單
+        closeCustomInfoForm();
+      }
+      
+      // 編輯個人資訊
+      function editCustomInfo() {
+        // 載入現有的個人資訊到表單
+        if (state.userInfo.role) {
+          const userRoleSelect = document.getElementById('userRoleSelect');
+          const userTitleSelect = document.getElementById('userTitleSelect');
+          const gasLevelSelect = document.getElementById('gasLevelSelect');
+          
+          if (userRoleSelect) userRoleSelect.value = state.userInfo.role;
+          if (userTitleSelect) userTitleSelect.value = state.userInfo.title;
+          if (gasLevelSelect) gasLevelSelect.value = state.userInfo.gasLevel;
+        }
+        
+        // 顯示表單
+        showCustomInfoForm();
+      }
+      
+      // 清除個人資訊
+      function clearCustomInfo() {
+        if (confirm('確定要清除所有個人資訊嗎？')) {
+          // 清除 state 和 localStorage
+          state.userInfo = {
+            role: "",
+            title: "",
+            gasLevel: ""
+          };
+          
+          localStorage.removeItem('gaso_userInfo');
+          
+          // 更新顯示
+          updateUserInfoDisplay();
+          
+          console.log('個人資訊已清除');
+        }
+      }
+      
+      // 生成客製化的 prompt 前綴
+      function generateCustomPromptPrefix() {
+        if (!state.userInfo.role || !state.userInfo.title || !state.userInfo.gasLevel) {
+          return '';
+        }
+        
+        return `我是負責${state.userInfo.role}的${state.userInfo.title}，我對 Google Apps Script 熟悉的程度是${state.userInfo.gasLevel}。\n\n`;
+      }
+      
+      // --- 拖曳功能（預設啟用） ---
+      
+      // 重設位置
+      function resetPosition() {
+        state.currentTranslateX = 0;
+        state.currentTranslateY = 0;
+        applyDragTransform();
+        console.log('位置已重設');
+      }
+      
+      // 回到中心
+      function centerMap() {
+        if (state.origW && state.origH) {
+          const scale = state.scalePct / 100;
+          const containerWidth = graph.clientWidth;
+          const containerHeight = graph.clientHeight;
+          const scaledWidth = state.origW * scale;
+          const scaledHeight = state.origH * scale;
+          
+          // 計算中心位置
+          state.currentTranslateX = (containerWidth - scaledWidth) / 2;
+          state.currentTranslateY = (containerHeight - scaledHeight) / 2;
+          
+          applyDragTransform();
+          console.log('地圖已回到中心');
+        }
+      }
+      
+      // 回到起點功能
+      function goToStart() {
+        // 找到起點節點
+        const startNodes = findStartNodes();
+        if (startNodes.length === 0) {
+          console.log('找不到起點節點');
+          return;
+        }
+        
+        const startNode = startNodes[0];
+        console.log('找到起點節點:', startNode);
+        
+        // 找到起點節點在 SVG 中的位置
+        const svg = zoomInner.querySelector('svg');
+        if (!svg) {
+          console.log('找不到 SVG 元素');
+          return;
+        }
+        
+        // 通過標籤找到起點節點元素
+        const nodeDetail = state.nodeDetails.find(n => n.id === startNode);
+        if (!nodeDetail) {
+          console.log('找不到起點節點詳細資訊');
+          return;
+        }
+        
+        const allNodes = svg.querySelectorAll('g.node');
+        let startNodeElement = null;
+        
+        for (const node of allNodes) {
+          const textElement = node.querySelector('text');
+          if (textElement && textElement.textContent === nodeDetail.label) {
+            startNodeElement = node;
+            break;
+          }
+        }
+        
+        if (startNodeElement) {
+          // 設定縮放到 150%
+          state.scalePct = 150;
+          
+          // 計算容器中心
+          const containerWidth = graph.clientWidth;
+          const containerHeight = graph.clientHeight;
+          
+          console.log('容器尺寸:', containerWidth, containerHeight);
+          
+          // 使用更簡單的方法：直接將起點節點置中
+          // 先重設位置到原點
+          state.currentTranslateX = 0;
+          state.currentTranslateY = 0;
+          
+          // 取得起點節點的位置
+          const bbox = startNodeElement.getBBox();
+          const nodeX = bbox.x + bbox.width / 2;
+          const nodeY = bbox.y + bbox.height / 2;
+          
+          console.log('起點節點位置:', nodeX, nodeY);
+          
+          // 計算縮放比例
+          const scale = state.scalePct / 100;
+          
+          // 計算起點節點在縮放後的位置
+          const scaledNodeX = nodeX * scale;
+          const scaledNodeY = nodeY * scale;
+          
+          console.log('縮放後節點位置:', scaledNodeX, scaledNodeY);
+          
+          // 修正置中計算：正確處理負座標
+          // 計算需要移動的距離
+          const moveX = (containerWidth / 2) - scaledNodeX;
+          const moveY = (containerHeight / 2) - scaledNodeY;
+          
+          console.log('需要移動的距離:', moveX, moveY);
+          
+          // 對於負座標的節點，我們需要特別處理
+          // 如果節點在負座標區域，我們需要將整個地圖向上移動
+          let finalX = moveX;
+          let finalY = moveY;
+          
+          // 如果 Y 座標是負值（節點在地圖上方），調整計算方式
+          if (nodeY < 0) {
+            // 對於負 Y 座標，我們需要將地圖向上移動更多
+            // 讓節點能夠顯示在螢幕中央
+            finalY = moveY;
+            console.log('檢測到負 Y 座標，調整計算方式');
+          }
+          
+          // 限制移動範圍，防止地圖跑到螢幕外
+          const maxMoveX = containerWidth * 0.9; // 放寬限制
+          const maxMoveY = containerHeight * 0.9; // 放寬限制
+          
+          state.currentTranslateX = Math.max(-maxMoveX, Math.min(maxMoveX, finalX));
+          state.currentTranslateY = Math.max(-maxMoveY, Math.min(maxMoveY, finalY));
+          
+          console.log('最終位移:', state.currentTranslateX, state.currentTranslateY);
+          
+          // 應用變換
+          applyDragTransform();
+          zoomLabel.textContent = `${state.scalePct}%`;
+          zoomRange.value = String(state.scalePct);
+          
+          console.log('已回到起點，縮放到 150%，位置已重設到原點');
+        } else {
+          console.log('找不到起點節點元素');
+        }
+      }
+      
+      // 應用拖曳變換
+      function applyDragTransform() {
+        const scale = state.scalePct / 100;
+        
+        // 完全移除邊界限制，允許自由拖曳到任何位置
+        // 只保留極端情況的保護，防止拖曳到過於離譜的位置
+        const extremeLimit = 10000; // 極限值，防止拖曳到過於離譜的位置
+        
+        // 只在極端情況下才限制
+        if (Math.abs(state.currentTranslateX) > extremeLimit) {
+          state.currentTranslateX = Math.sign(state.currentTranslateX) * extremeLimit;
+        }
+        if (Math.abs(state.currentTranslateY) > extremeLimit) {
+          state.currentTranslateY = Math.sign(state.currentTranslateY) * extremeLimit;
+        }
+        
+        zoomInner.style.transform = `translate(${state.currentTranslateX}px, ${state.currentTranslateY}px) scale(${scale})`;
+      }
+      
+      // 拖曳開始
+      function startDrag(e) {
+        // 預設啟用拖曳，不需要檢查 isDragMode
         e.preventDefault();
+        e.stopPropagation();
+        state.isDragging = true;
+        graph.classList.add('dragging');
+        zoomInner.classList.add('dragging');
+        
+        state.dragStartX = e.clientX;
+        state.dragStartY = e.clientY;
+        state.dragOffsetX = state.currentTranslateX;
+        state.dragOffsetY = state.currentTranslateY;
+        
+        console.log('開始拖曳，起始位置:', state.dragStartX, state.dragStartY);
+      }
+      
+      // 拖曳中
+      function drag(e) {
+        if (!state.isDragging) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const deltaX = e.clientX - state.dragStartX;
+        const deltaY = e.clientY - state.dragStartY;
+        
+        state.currentTranslateX = state.dragOffsetX + deltaX;
+        state.currentTranslateY = state.dragOffsetY + deltaY;
+        
+        console.log('拖曳中，偏移:', deltaX, deltaY, '新位置:', state.currentTranslateX, state.currentTranslateY);
+        applyDragTransform();
+      }
+      
+      // 拖曳結束
+      function endDrag(e) {
+        if (!state.isDragging) return;
+        
+        state.isDragging = false;
+        graph.classList.remove('dragging');
+        zoomInner.classList.remove('dragging');
+        
+        console.log('拖曳結束');
+      }
+      
+      // 綁定拖曳事件
+      graph.addEventListener('mousedown', startDrag);
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', endDrag);
+      
+      // 添加觸控支援
+      graph.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          const touch = e.touches[0];
+          const mouseEvent = new MouseEvent('mousedown', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+          });
+          startDrag(mouseEvent);
+        }
+      });
+      
+      document.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 1 && state.isDragging) {
+          e.preventDefault();
+          const touch = e.touches[0];
+          const mouseEvent = new MouseEvent('mousemove', {
+            clientX: touch.clientX,
+            clientY: touch.clientY
+          });
+          drag(mouseEvent);
+        }
+      });
+      
+      document.addEventListener('touchend', (e) => {
+        if (state.isDragging) {
+          endDrag(e);
+        }
+      });
+      
+      // 防止拖曳時選取文字
+      graph.addEventListener('selectstart', (e) => {
+        if (state.isDragMode) {
+          e.preventDefault();
+        }
+      });
+      
+      // 綁定新按鈕事件
+      $("goToStart").addEventListener("click", goToStart);
+      
+      // 綁定個人化設定按鈕事件
+      $("editCustomInfo").addEventListener("click", editCustomInfo);
+      $("clearCustomInfo").addEventListener("click", clearCustomInfo);
+      
+
+      // Google Maps 風格的滾輪縮放
+      graph.addEventListener("wheel", (e) => {
+        e.preventDefault();
+        
+        // 取得滑鼠相對於畫布的位置
+        const rect = graph.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // 計算縮放前的滑鼠相對於地圖的位置
+        const scale = state.scalePct / 100;
+        const mapX = (mouseX - state.currentTranslateX) / scale;
+        const mapY = (mouseY - state.currentTranslateY) / scale;
+        
+        // 計算縮放變化
         const delta = Math.sign(e.deltaY);
-        applyZoom(state.scalePct + (delta > 0 ? -5 : 5));
+        const zoomChange = delta > 0 ? -10 : 10;
+        const newScale = Math.max(10, Math.min(500, state.scalePct + zoomChange));
+        const scaleRatio = newScale / state.scalePct;
+        
+        // 更新縮放比例
+        state.scalePct = newScale;
+        
+        // 計算新的位移，保持滑鼠位置不變
+        const newScaleValue = state.scalePct / 100;
+        state.currentTranslateX = mouseX - mapX * newScaleValue;
+        state.currentTranslateY = mouseY - mapY * newScaleValue;
+        
+        // 添加縮放動畫效果
+        zoomInner.classList.add('zooming');
+        
+        // 應用變換
+        applyDragTransform();
+        zoomLabel.textContent = `${state.scalePct}%`;
+        zoomRange.value = String(state.scalePct);
+        
+        // 移除動畫類別
+        setTimeout(() => {
+          zoomInner.classList.remove('zooming');
+        }, 300);
+        
+        console.log(`縮放到 ${state.scalePct}%，滑鼠位置: (${mouseX}, ${mouseY})`);
       }, { passive: false });
 
       // 監聽 layout 切換
@@ -1748,6 +2492,13 @@
         const title = document.getElementById('modalTitle');
         const content = document.getElementById('modalContent');
         
+        // 生成客製化的 prompt
+        const customPrefix = generateCustomPromptPrefix();
+        const fullPrompt = customPrefix + nodeDetail.prompt;
+        
+        // 取得節點座標資訊
+        const nodeCoordinates = getNodeCoordinates(nodeDetail.id);
+        
         title.textContent = `${nodeDetail.label}`;
         content.innerHTML = `
           <div class="node-info">
@@ -1761,35 +2512,113 @@
               <span class="info-value">${nodeDetail.attribute}</span>
             </div>
             ` : ''}
+            ${nodeCoordinates ? `
+            <div class="info-row">
+              <span class="info-label">座標:</span>
+              <span class="info-value">X: ${nodeCoordinates.x.toFixed(2)}, Y: ${nodeCoordinates.y.toFixed(2)}</span>
+            </div>
+            ` : ''}
             <div class="info-row">
               <span class="info-label">提示:</span>
               <div class="info-prompt">
-                ${nodeDetail.prompt}
-                <button class="copy-button" onclick="copyPromptToClipboard('${nodeDetail.prompt.replace(/'/g, "\\'")}')">複製</button>
+                ${fullPrompt}
+                <button class="copy-button" onclick="copyPromptToClipboard('${fullPrompt.replace(/'/g, "\\'")}')">複製</button>
               </div>
             </div>
+            ${state.userInfo.role && state.userInfo.title && state.userInfo.gasLevel ? `
+            <div class="info-row">
+              <span class="info-label">個人化:</span>
+              <span class="info-value">已套用您的個人資訊</span>
+            </div>
+            ` : ''}
           </div>
         `;
         
         modal.style.display = 'block';
       }
-
-      // --- 彈出視窗事件處理 ---
-      document.querySelector('.close').onclick = function() {
-        document.getElementById('nodeModal').style.display = 'none';
+      
+      // 取得節點座標資訊
+      function getNodeCoordinates(nodeId) {
+        const svg = zoomInner.querySelector('svg');
+        if (!svg) return null;
+        
+        // 找到對應的節點元素
+        const nodeDetail = state.nodeDetails.find(n => n.id === nodeId);
+        if (!nodeDetail) return null;
+        
+        const allNodes = svg.querySelectorAll('g.node');
+        let nodeElement = null;
+        
+        for (const node of allNodes) {
+          const textElement = node.querySelector('text');
+          if (textElement && textElement.textContent === nodeDetail.label) {
+            nodeElement = node;
+            break;
+          }
+        }
+        
+        if (nodeElement) {
+          try {
+            // 取得節點的邊界框
+            const bbox = nodeElement.getBBox();
+            return {
+              x: bbox.x + bbox.width / 2,  // 節點中心 X 座標
+              y: bbox.y + bbox.height / 2  // 節點中心 Y 座標
+            };
+          } catch (e) {
+            console.log('無法取得節點座標:', e);
+            return null;
+          }
+        }
+        
+        return null;
       }
 
+      // --- 彈出視窗事件處理 ---
+      // 修復節點資訊彈出視窗關閉按鈕
+      document.addEventListener('DOMContentLoaded', function() {
+        const nodeModalClose = document.querySelector('#nodeModal .close');
+        if (nodeModalClose) {
+          nodeModalClose.onclick = function() {
+            document.getElementById('nodeModal').style.display = 'none';
+          }
+        }
+        
+        // 修復個人化資訊彈出視窗關閉按鈕
+        const customInfoModalClose = document.querySelector('#customInfoModal .close');
+        if (customInfoModalClose) {
+          customInfoModalClose.onclick = function() {
+            document.getElementById('customInfoModal').style.display = 'none';
+          }
+        }
+      });
+
       window.onclick = function(event) {
-        const modal = document.getElementById('nodeModal');
-        if (event.target == modal) {
-          modal.style.display = 'none';
+        const nodeModal = document.getElementById('nodeModal');
+        const customInfoModal = document.getElementById('customInfoModal');
+        
+        if (event.target == nodeModal) {
+          nodeModal.style.display = 'none';
+        }
+        
+        if (event.target == customInfoModal) {
+          customInfoModal.style.display = 'none';
         }
       }
 
       // 按 ESC 鍵關閉彈出視窗
       document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
-          document.getElementById('nodeModal').style.display = 'none';
+          const nodeModal = document.getElementById('nodeModal');
+          const customInfoModal = document.getElementById('customInfoModal');
+          
+          if (nodeModal && nodeModal.style.display === 'block') {
+            nodeModal.style.display = 'none';
+          }
+          
+          if (customInfoModal && customInfoModal.style.display === 'block') {
+            customInfoModal.style.display = 'none';
+          }
         }
       });
 
@@ -2047,3 +2876,4 @@
     </script>
   </body>
 </html>
+
