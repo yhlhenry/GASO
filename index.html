@@ -11,32 +11,36 @@
 
     <style>
       :root { color-scheme: light dark; }
-      body { 
+      html, body { 
         font-family: 'Times New Roman', 'Georgia', serif; 
         margin: 0; 
-        padding: 20px; 
-        padding-bottom: 20px; /* 減少底部 padding */
+        padding: 0; 
         background: #f4f1e8; 
         background-image: 
           radial-gradient(circle at 20% 50%, rgba(139, 69, 19, 0.1) 0%, transparent 50%),
           radial-gradient(circle at 80% 20%, rgba(160, 82, 45, 0.1) 0%, transparent 50%),
           radial-gradient(circle at 40% 80%, rgba(101, 67, 33, 0.1) 0%, transparent 50%);
-        min-height: 100vh;
-        overflow-x: auto;
-        overflow-y: auto;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden; /* 完全移除捲軸 */
         box-sizing: border-box;
+        position: fixed; /* 固定定位，防止捲動 */
       }
       
       .header {
         background: #faf8f3;
         border: 3px solid #8b4513;
         border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 30px;
+        padding: 15px 25px; /* 減少上下 padding */
+        margin: 10px; /* 減少 margin */
         box-shadow: 
           0 4px 8px rgba(0, 0, 0, 0.2),
           inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        position: relative;
+        position: absolute; /* 絕對定位 */
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000; /* 確保在地圖上方 */
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -80,20 +84,19 @@
         margin-top: 5px;
       }
       #graph { 
-        width: 100%; 
-        max-width: none; 
-        overflow: hidden; /* 改為 hidden，讓拖曳更流暢 */
-        border: 3px solid #8b4513; 
-        border-radius: 8px; 
+        position: fixed; /* 固定定位，全螢幕覆蓋 */
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden; /* 完全隱藏捲軸 */
+        border: none; /* 移除邊框 */
         background: #faf8f3; 
-        transition: margin-right 0.3s ease;
-        box-shadow: 
-          0 4px 8px rgba(0, 0, 0, 0.2),
-          inset 0 1px 0 rgba(255, 255, 255, 0.3);
-        min-height: 400px;
-        position: relative;
         cursor: grab;
         user-select: none;
+        z-index: 1; /* 確保在地圖層 */
+        padding-top: 80px; /* 為 header 留出空間 */
+        box-sizing: border-box;
       }
       
       #graph.dragging {
@@ -448,7 +451,7 @@
           -4px 0 12px rgba(0, 0, 0, 0.3),
           inset 1px 0 0 rgba(255, 255, 255, 0.2);
         transition: right 0.3s ease;
-        z-index: 1000;
+        z-index: 1001; /* 確保在 header 上方 */
         overflow-y: auto;
         padding: 20px;
         box-sizing: border-box;
@@ -850,8 +853,13 @@
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
       }
 
-      /* 響應式設計優化 */
+      /* 響應式設計優化（Google Maps 風格） */
       @media (max-width: 768px) {
+        .header {
+          padding: 10px 15px; /* 減少手機版的 padding */
+          margin: 5px; /* 減少手機版的 margin */
+        }
+        
         .sidebar {
           width: 100%;
           right: -100%;
@@ -885,6 +893,11 @@
 
         .loading-progress {
           width: 250px;
+        }
+        
+        /* 手機版地圖容器調整 */
+        #graph {
+          padding-top: 60px; /* 減少手機版的 header 空間 */
         }
       }
     </style>
@@ -1229,12 +1242,12 @@
       function adjustGraphMargin() {
         const graph = $("graph");
         if (sidebar.classList.contains('open')) {
-          // 在桌面版時調整邊距
+          // Google Maps 風格：調整地圖容器的右邊距
           if (window.innerWidth > 768) {
-            graph.style.marginRight = '350px';
+            graph.style.width = 'calc(100vw - 350px)';
           }
         } else {
-          graph.style.marginRight = '0';
+          graph.style.width = '100vw';
         }
       }
 
@@ -1290,20 +1303,29 @@
         }
       }
       function fitToWidth() {
-        if (!state.origW) return;
+        if (!state.origW || !state.origH) return;
+        
         const containerWidth = graph.clientWidth;
-        const scale = containerWidth / state.origW;
+        const containerHeight = graph.clientHeight - 80; // 減去 header 高度
         
-        // 重設拖曳位置到原點
-        state.currentTranslateX = 0;
-        state.currentTranslateY = 0;
+        // 計算適合的縮放比例，確保地圖完全可見
+        const scaleX = containerWidth / state.origW;
+        const scaleY = containerHeight / state.origH;
+        const scale = Math.min(scaleX, scaleY) * 100; // 選擇較小的縮放比例
         
-        applyZoom(Math.round(scale * 100));
-        console.log('觀看全地圖：已重設位置到原點');
+        // 重設拖曳位置到中心
+        state.currentTranslateX = (containerWidth - state.origW * scale / 100) / 2;
+        state.currentTranslateY = (containerHeight - state.origH * scale / 100) / 2;
+        
+        applyZoom(Math.round(scale));
+        console.log('Google Maps 風格觀看全地圖：已重設位置到中心');
       }
       function resetZoom() {
+        // 重設縮放和位置
+        state.currentTranslateX = 0;
+        state.currentTranslateY = 0;
         applyZoom(100);
-        graph.scrollTo({ left: 0, top: 0, behavior: "smooth" });
+        console.log('Google Maps 風格重設縮放：已重設位置和縮放');
       }
 
       // --- 字體大小 ---
@@ -1893,21 +1915,25 @@
         }
       }
       
-      // 應用拖曳變換
+      // 應用拖曳變換（Google Maps 風格）
       function applyDragTransform() {
         const scale = state.scalePct / 100;
         
-        // 完全移除邊界限制，允許自由拖曳到任何位置
-        // 只保留極端情況的保護，防止拖曳到過於離譜的位置
-        const extremeLimit = 10000; // 極限值，防止拖曳到過於離譜的位置
+        // Google Maps 風格：允許自由拖曳，但提供適當的邊界限制
+        const containerWidth = graph.clientWidth;
+        const containerHeight = graph.clientHeight;
+        const scaledWidth = state.origW ? state.origW * scale : 0;
+        const scaledHeight = state.origH ? state.origH * scale : 0;
         
-        // 只在極端情況下才限制
-        if (Math.abs(state.currentTranslateX) > extremeLimit) {
-          state.currentTranslateX = Math.sign(state.currentTranslateX) * extremeLimit;
-        }
-        if (Math.abs(state.currentTranslateY) > extremeLimit) {
-          state.currentTranslateY = Math.sign(state.currentTranslateY) * extremeLimit;
-        }
+        // 計算合理的拖曳邊界
+        const maxTranslateX = Math.max(0, (scaledWidth - containerWidth) / 2 + containerWidth * 0.5);
+        const minTranslateX = Math.min(0, -(scaledWidth - containerWidth) / 2 - containerWidth * 0.5);
+        const maxTranslateY = Math.max(0, (scaledHeight - containerHeight) / 2 + containerHeight * 0.5);
+        const minTranslateY = Math.min(0, -(scaledHeight - containerHeight) / 2 - containerHeight * 0.5);
+        
+        // 應用邊界限制
+        state.currentTranslateX = Math.max(minTranslateX, Math.min(maxTranslateX, state.currentTranslateX));
+        state.currentTranslateY = Math.max(minTranslateY, Math.min(maxTranslateY, state.currentTranslateY));
         
         zoomInner.style.transform = `translate(${state.currentTranslateX}px, ${state.currentTranslateY}px) scale(${scale})`;
       }
@@ -2007,7 +2033,7 @@
       $("clearCustomInfo").addEventListener("click", clearCustomInfo);
       
 
-      // Google Maps 風格的滾輪縮放
+      // Google Maps 風格的滾輪縮放（優化版）
       graph.addEventListener("wheel", (e) => {
         e.preventDefault();
         
@@ -2021,11 +2047,10 @@
         const mapX = (mouseX - state.currentTranslateX) / scale;
         const mapY = (mouseY - state.currentTranslateY) / scale;
         
-        // 計算縮放變化
+        // 計算縮放變化（更平滑的縮放）
         const delta = Math.sign(e.deltaY);
-        const zoomChange = delta > 0 ? -10 : 10;
-        const newScale = Math.max(10, Math.min(500, state.scalePct + zoomChange));
-        const scaleRatio = newScale / state.scalePct;
+        const zoomChange = delta > 0 ? -5 : 5; // 減少縮放步長，更平滑
+        const newScale = Math.max(25, Math.min(400, state.scalePct + zoomChange)); // 調整縮放範圍
         
         // 更新縮放比例
         state.scalePct = newScale;
@@ -2046,9 +2071,9 @@
         // 移除動畫類別
         setTimeout(() => {
           zoomInner.classList.remove('zooming');
-        }, 300);
+        }, 200); // 縮短動畫時間
         
-        console.log(`縮放到 ${state.scalePct}%，滑鼠位置: (${mouseX}, ${mouseY})`);
+        console.log(`Google Maps 風格縮放到 ${state.scalePct}%，滑鼠位置: (${mouseX}, ${mouseY})`);
       }, { passive: false });
 
       // 監聽 layout 切換
@@ -2772,66 +2797,16 @@
         }
       }
 
-      // --- 動態調整頁面大小 ---
+      // --- 動態調整頁面大小（Google Maps 風格） ---
       function adjustPageSizeToGraph(graphWidth, graphHeight) {
-        // 計算需要的頁面高度
-        const header = document.querySelector('.header');
-        const headerHeight = header ? header.offsetHeight + 40 : 0; // 40px 是 header 的 margin
-        const graphPadding = 40; // graph 容器的 padding
-        const bodyPadding = 40; // body 的 padding (20px * 2)
-        
-        // 智能處理大地圖
-        const isLargeGraph = graphWidth > window.innerWidth * 2 || graphHeight > window.innerHeight * 2;
-        let minPageHeight;
-        
-        if (isLargeGraph) {
-          // 大地圖：限制頁面高度，讓用戶可以滾動查看
-          const maxPageHeight = window.innerHeight * 1.5; // 最大頁面高度為螢幕高度的1.5倍
-          const requiredHeight = headerHeight + graphHeight + graphPadding + bodyPadding + 20;
-          minPageHeight = Math.min(requiredHeight, maxPageHeight);
-          
-          // 啟用滾動
-          document.body.style.overflowX = 'auto';
-          document.body.style.overflowY = 'auto';
-        } else {
-          // 小地圖：正常處理
-          minPageHeight = headerHeight + graphHeight + graphPadding + bodyPadding + 20;
-          document.body.style.overflowX = 'hidden';
-          document.body.style.overflowY = 'auto';
-        }
-        
-        // 設置頁面高度
-        document.body.style.minHeight = minPageHeight + 'px';
-        document.body.style.height = 'auto';
-        
-        console.log(`頁面大小調整: 地圖尺寸 ${graphWidth}x${graphHeight}, 是否大地圖: ${isLargeGraph}, 頁面高度: ${minPageHeight}px`);
+        // Google Maps 風格：不需要調整頁面大小，地圖容器已經是全螢幕
+        console.log(`地圖尺寸: ${graphWidth}x${graphHeight} (Google Maps 風格，無需調整頁面大小)`);
       }
 
-      // --- 移除多餘空白 ---
+      // --- Google Maps 風格不需要移除空白 ---
       function removeExcessWhitespace() {
-        const graph = document.getElementById('graph');
-        const header = document.querySelector('.header');
-        
-        if (!graph || !header) return;
-        
-        // 計算實際需要的頁面高度
-        const headerHeight = header.offsetHeight + 40; // header + margin
-        const graphHeight = graph.offsetHeight;
-        const bodyPadding = 40; // body padding
-        const requiredHeight = headerHeight + graphHeight + bodyPadding + 20; // 20px 緩衝
-        
-        // 設置精確的頁面高度
-        document.body.style.minHeight = requiredHeight + 'px';
-        document.body.style.height = requiredHeight + 'px';
-        
-        // 確保沒有多餘的底部空白
-        const currentScrollHeight = document.body.scrollHeight;
-        if (currentScrollHeight > requiredHeight + 100) {
-          // 如果還有太多空白，進一步調整
-          document.body.style.height = (requiredHeight - 50) + 'px';
-        }
-        
-        console.log(`空白移除: 需要高度 ${requiredHeight}px, 當前高度 ${currentScrollHeight}px`);
+        // Google Maps 風格：地圖容器已經是全螢幕，不需要移除空白
+        console.log('Google Maps 風格：無需移除空白');
       }
 
       // --- 取得 DOT 並渲染（含 log） ---
