@@ -850,6 +850,24 @@
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
       }
 
+      /* Debug 資訊樣式 */
+      .debug-info {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: #00ff00;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 9999;
+        border: 1px solid #00ff00;
+      }
+      .debug-info div {
+        margin: 2px 0;
+      }
+
       /* 響應式設計優化 */
       @media (max-width: 768px) {
         .sidebar {
@@ -903,6 +921,13 @@
         <div class="loading-progress-bar"></div>
       </div>
       <div class="loading-subtitle">探索 Google Apps Script 的無限可能</div>
+    </div>
+
+    <!-- Debug 資訊顯示 -->
+    <div class="debug-info" id="debugInfo">
+      <div>螢幕: <span id="screenWidth">-</span> x <span id="screenHeight">-</span></div>
+      <div>容器: <span id="containerWidth">-</span> x <span id="containerHeight">-</span></div>
+      <div>SVG: <span id="svgWidth">-</span> x <span id="svgHeight">-</span></div>
     </div>
 
     <!-- 頁面標題和搜尋區域 -->
@@ -2844,6 +2869,38 @@
         }
       }
 
+      // --- Debug 資訊更新函數 ---
+      function updateDebugInfo() {
+        try {
+          const screenWidth = window.innerWidth;
+          const screenHeight = window.innerHeight;
+          const containerWidth = graph ? graph.clientWidth : 0;
+          const containerHeight = graph ? graph.clientHeight : 0;
+          const svgWidth = zoomInner ? zoomInner.clientWidth : 0;
+          const svgHeight = zoomInner ? zoomInner.clientHeight : 0;
+          
+          const screenWidthEl = document.getElementById("screenWidth");
+          const screenHeightEl = document.getElementById("screenHeight");
+          const containerWidthEl = document.getElementById("containerWidth");
+          const containerHeightEl = document.getElementById("containerHeight");
+          const svgWidthEl = document.getElementById("svgWidth");
+          const svgHeightEl = document.getElementById("svgHeight");
+          
+          if (screenWidthEl) screenWidthEl.textContent = screenWidth + "px";
+          if (screenHeightEl) screenHeightEl.textContent = screenHeight + "px";
+          if (containerWidthEl) containerWidthEl.textContent = containerWidth + "px";
+          if (containerHeightEl) containerHeightEl.textContent = containerHeight + "px";
+          if (svgWidthEl) svgWidthEl.textContent = svgWidth + "px";
+          if (svgHeightEl) svgHeightEl.textContent = svgHeight + "px";
+        } catch (e) {
+          console.error("Debug 更新錯誤:", e);
+        }
+      }
+      
+      // 定期更新 debug 資訊
+      setInterval(updateDebugInfo, 1000);
+      window.addEventListener("resize", updateDebugInfo);
+      
       // 顯示載入動畫
       showLoadingAnimation();
 
