@@ -101,6 +101,12 @@
         overflow: hidden !important; /* 強制隱藏捲軸 */
         border: none; /* 移除邊框 */
         background: #faf8f3; 
+        background-image: 
+          linear-gradient(rgba(250, 248, 243, 0.85), rgba(250, 248, 243, 0.85)),
+          url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png");
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed; /* 固定背景，不受拖曳影響 */
         cursor: grab;
         user-select: none;
         z-index: 1; /* 確保在地圖層 */
@@ -136,20 +142,7 @@
       #zoomInner.zooming {
         transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       }
-      #zoomInner::before { 
-        content: ''; 
-        position: absolute; 
-        top: -100px; 
-        left: -100px; 
-        right: -100px; 
-        bottom: -100px; 
-        background-image: url("https://raw.githubusercontent.com/yhlhenry/GASO/main/image/World_Map_By_ChatGPT_Fixed_By_Gemini.png"); 
-        background-repeat: no-repeat; 
-        background-position: center center; 
-        background-size: cover; 
-        opacity: 0.3; 
-        z-index: -1; 
-      }
+      /* 移除 zoomInner 的背景圖片，改為在 graph 層級設定 */
       #zoomInner svg { background: transparent !important; position: relative; z-index: 1; }
       #zoomInner svg polygon[fill="#ffffff"] { fill: transparent !important; }
       
@@ -948,7 +941,7 @@
     </div>
 
     <!-- Debug 資訊顯示 -->
-    <div class="debug-info" id="debugInfo">
+    <div class="debug-info" id="debugInfo" style="display: none;">
       <div>螢幕: <span id="screenWidth">-</span> x <span id="screenHeight">-</span></div>
       <div>容器 (client): <span id="containerWidth">-</span> x <span id="containerHeight">-</span></div>
       <div>容器 (scroll): <span id="scrollWidth">-</span> x <span id="scrollHeight">-</span></div>
@@ -1083,6 +1076,14 @@
         <div class="control-group-title">路徑控制</div>
         <div class="control-item">
           <button id="clearPathHighlight" class="danger">清除路徑高亮</button>
+        </div>
+      </div>
+
+      <!-- Debug 控制組 -->
+      <div class="control-group">
+        <div class="control-group-title">Debug 模式</div>
+        <div class="control-item">
+          <button id="debugToggle" class="secondary">Debug 資訊: 關閉</button>
         </div>
       </div>
 
@@ -1839,6 +1840,110 @@
         }
       }
       
+      // 通用節點置中功能
+      function centerNode(nodeId, targetScale = 150) {
+        console.log('=== 開始置中節點 ===');
+        console.log('目標節點 ID:', nodeId);
+        console.log('目標縮放比例:', targetScale);
+        
+        // 找到指定節點
+        const nodeDetail = state.nodeDetails.find(n => n.id === nodeId);
+        if (!nodeDetail) {
+          console.log('❌ 找不到節點詳細資訊:', nodeId);
+          console.log('可用的節點:', state.nodeDetails.map(n => n.id));
+          return false;
+        }
+        console.log('✅ 找到節點詳細資訊:', nodeDetail);
+        
+        // 找到節點在 SVG 中的位置
+        const svg = zoomInner.querySelector('svg');
+        if (!svg) {
+          console.log('❌ 找不到 SVG 元素');
+          return false;
+        }
+        console.log('✅ 找到 SVG 元素');
+        
+        const allNodes = svg.querySelectorAll('g.node');
+        console.log('找到的節點數量:', allNodes.length);
+        
+        let targetNodeElement = null;
+        
+        for (const node of allNodes) {
+          const textElement = node.querySelector('text');
+          if (textElement && textElement.textContent === nodeDetail.label) {
+            targetNodeElement = node;
+            console.log('✅ 找到匹配的節點元素:', node.id, '標籤:', textElement.textContent);
+            break;
+          }
+        }
+        
+        if (targetNodeElement) {
+          console.log('=== 開始計算置中位置 ===');
+          
+          // 設定縮放比例
+          state.scalePct = targetScale;
+          console.log('設定縮放比例:', state.scalePct);
+          
+          // 計算容器中心
+          const containerWidth = graph.clientWidth;
+          const containerHeight = graph.clientHeight;
+          console.log('容器尺寸:', containerWidth, 'x', containerHeight);
+          
+          // 先重設位置到原點
+          state.currentTranslateX = 0;
+          state.currentTranslateY = 0;
+          console.log('重設位置到原點');
+          
+          // 取得節點的位置
+          const bbox = targetNodeElement.getBBox();
+          const nodeX = bbox.x + bbox.width / 2;
+          const nodeY = bbox.y + bbox.height / 2;
+          console.log('節點 BBox:', bbox);
+          console.log('節點中心位置:', nodeX, nodeY);
+          
+          // 計算縮放比例
+          const scale = state.scalePct / 100;
+          console.log('縮放比例:', scale);
+          
+          // 計算節點在縮放後的位置
+          const scaledNodeX = nodeX * scale;
+          const scaledNodeY = nodeY * scale;
+          console.log('縮放後節點位置:', scaledNodeX, scaledNodeY);
+          
+          // 計算需要移動的距離（讓節點置中）
+          const moveX = (containerWidth / 2) - scaledNodeX;
+          const moveY = (containerHeight / 2) - scaledNodeY;
+          console.log('容器中心:', containerWidth / 2, containerHeight / 2);
+          console.log('需要移動的距離:', moveX, moveY);
+          
+          // 限制移動範圍，防止地圖跑到螢幕外
+          const maxMoveX = containerWidth * 0.9;
+          const maxMoveY = containerHeight * 0.9;
+          console.log('移動限制:', maxMoveX, maxMoveY);
+          
+          state.currentTranslateX = Math.max(-maxMoveX, Math.min(maxMoveX, moveX));
+          state.currentTranslateY = Math.max(-maxMoveY, Math.min(maxMoveY, moveY));
+          console.log('最終位移:', state.currentTranslateX, state.currentTranslateY);
+          
+          // 應用變換
+          console.log('應用變換...');
+          applyDragTransform();
+          zoomLabel.textContent = `${state.scalePct}%`;
+          zoomRange.value = String(state.scalePct);
+          
+          console.log('✅ 節點置中完成');
+          return true;
+        } else {
+          console.log('❌ 找不到節點元素');
+          console.log('嘗試的標籤:', nodeDetail.label);
+          console.log('所有節點標籤:', Array.from(allNodes).map(node => {
+            const text = node.querySelector('text');
+            return text ? text.textContent : '無標籤';
+          }));
+          return false;
+        }
+      }
+      
       // 回到起點功能
       function goToStart() {
         // 找到起點節點
@@ -1851,99 +1956,12 @@
         const startNode = startNodes[0];
         console.log('找到起點節點:', startNode);
         
-        // 找到起點節點在 SVG 中的位置
-        const svg = zoomInner.querySelector('svg');
-        if (!svg) {
-          console.log('找不到 SVG 元素');
-          return;
-        }
-        
-        // 通過標籤找到起點節點元素
-        const nodeDetail = state.nodeDetails.find(n => n.id === startNode);
-        if (!nodeDetail) {
-          console.log('找不到起點節點詳細資訊');
-          return;
-        }
-        
-        const allNodes = svg.querySelectorAll('g.node');
-        let startNodeElement = null;
-        
-        for (const node of allNodes) {
-          const textElement = node.querySelector('text');
-          if (textElement && textElement.textContent === nodeDetail.label) {
-            startNodeElement = node;
-            break;
-          }
-        }
-        
-        if (startNodeElement) {
-          // 設定縮放到 150%
-          state.scalePct = 150;
-          
-          // 計算容器中心
-          const containerWidth = graph.clientWidth;
-          const containerHeight = graph.clientHeight;
-          
-          console.log('容器尺寸:', containerWidth, containerHeight);
-          
-          // 使用更簡單的方法：直接將起點節點置中
-          // 先重設位置到原點
-          state.currentTranslateX = 0;
-          state.currentTranslateY = 0;
-          
-          // 取得起點節點的位置
-          const bbox = startNodeElement.getBBox();
-          const nodeX = bbox.x + bbox.width / 2;
-          const nodeY = bbox.y + bbox.height / 2;
-          
-          console.log('起點節點位置:', nodeX, nodeY);
-          
-          // 計算縮放比例
-          const scale = state.scalePct / 100;
-          
-          // 計算起點節點在縮放後的位置
-          const scaledNodeX = nodeX * scale;
-          const scaledNodeY = nodeY * scale;
-          
-          console.log('縮放後節點位置:', scaledNodeX, scaledNodeY);
-          
-          // 修正置中計算：正確處理負座標
-          // 計算需要移動的距離
-          const moveX = (containerWidth / 2) - scaledNodeX;
-          const moveY = (containerHeight / 2) - scaledNodeY;
-          
-          console.log('需要移動的距離:', moveX, moveY);
-          
-          // 對於負座標的節點，我們需要特別處理
-          // 如果節點在負座標區域，我們需要將整個地圖向上移動
-          let finalX = moveX;
-          let finalY = moveY;
-          
-          // 如果 Y 座標是負值（節點在地圖上方），調整計算方式
-          if (nodeY < 0) {
-            // 對於負 Y 座標，我們需要將地圖向上移動更多
-            // 讓節點能夠顯示在螢幕中央
-            finalY = moveY;
-            console.log('檢測到負 Y 座標，調整計算方式');
-          }
-          
-          // 限制移動範圍，防止地圖跑到螢幕外
-          const maxMoveX = containerWidth * 0.9; // 放寬限制
-          const maxMoveY = containerHeight * 0.9; // 放寬限制
-          
-          state.currentTranslateX = Math.max(-maxMoveX, Math.min(maxMoveX, finalX));
-          state.currentTranslateY = Math.max(-maxMoveY, Math.min(maxMoveY, finalY));
-          
-          console.log('最終位移:', state.currentTranslateX, state.currentTranslateY);
-          
-          // 應用變換
-          applyDragTransform();
-          zoomLabel.textContent = `${state.scalePct}%`;
-          zoomRange.value = String(state.scalePct);
-          
-          console.log('已回到起點，縮放到 150%，位置已重設到原點');
+        // 使用通用節點置中功能
+        const success = centerNode(startNode, 150);
+        if (success) {
+          console.log('已回到起點，縮放到 150%');
         } else {
-          console.log('找不到起點節點元素');
+          console.log('無法置中起點節點');
         }
       }
       
@@ -2063,6 +2081,9 @@
       // 綁定個人化設定按鈕事件
       $("editCustomInfo").addEventListener("click", editCustomInfo);
       $("clearCustomInfo").addEventListener("click", clearCustomInfo);
+      
+      // 綁定 Debug 模式按鈕事件
+      $("debugToggle").addEventListener("click", toggleDebugMode);
       
 
       // Google Maps 風格的滾輪縮放（優化版）
@@ -2756,6 +2777,13 @@
         
         if (nodeElement) {
           console.log("觸發節點點擊事件");
+          
+          // 先將節點置中
+          const success = centerNode(nodeId, 150);
+          if (success) {
+            console.log(`節點 ${nodeId} 已置中`);
+          }
+          
           // 模擬節點點擊事件
           const clickEvent = new MouseEvent('click', {
             bubbles: true,
@@ -2769,6 +2797,13 @@
           searchInput.value = '';
         } else {
           console.log("找不到對應的節點元素，直接顯示節點資訊");
+          
+          // 即使找不到節點元素，也嘗試置中
+          const success = centerNode(nodeId, 150);
+          if (success) {
+            console.log(`節點 ${nodeId} 已置中`);
+          }
+          
           // 如果找不到節點，直接調用 showNodeInfo
           showNodeInfo(nodeDetail.id, nodeDetail.label);
           // 隱藏搜尋結果
@@ -2851,6 +2886,36 @@
         }
       }
 
+      // --- Debug 模式控制 ---
+      let debugMode = false;
+      
+      function toggleDebugMode() {
+        debugMode = !debugMode;
+        const debugInfo = document.getElementById('debugInfo');
+        const debugToggle = document.getElementById('debugToggle');
+        
+        if (debugMode) {
+          debugInfo.style.display = 'block';
+          debugToggle.textContent = 'Debug 資訊: 開啟';
+          debugToggle.classList.remove('secondary');
+          debugToggle.classList.add('primary');
+          updateDebugInfo();
+          // 開始定期更新 debug 資訊
+          if (window.debugInterval) clearInterval(window.debugInterval);
+          window.debugInterval = setInterval(updateDebugInfo, 1000);
+        } else {
+          debugInfo.style.display = 'none';
+          debugToggle.textContent = 'Debug 資訊: 關閉';
+          debugToggle.classList.remove('primary');
+          debugToggle.classList.add('secondary');
+          // 停止定期更新
+          if (window.debugInterval) {
+            clearInterval(window.debugInterval);
+            window.debugInterval = null;
+          }
+        }
+      }
+      
       // --- Debug 資訊更新函數 ---
       function updateDebugInfo() {
         try {
@@ -2861,34 +2926,7 @@
           const svgWidth = zoomInner ? zoomInner.clientWidth : 0;
           const svgHeight = zoomInner ? zoomInner.clientHeight : 0;
           
-          // 詳細調試：檢查容器的各種尺寸屬性
-          if (graph) {
-            console.log('=== 容器尺寸詳細資訊 ===');
-            console.log('clientWidth:', graph.clientWidth);
-            console.log('clientHeight:', graph.clientHeight);
-            console.log('offsetWidth:', graph.offsetWidth);
-            console.log('offsetHeight:', graph.offsetHeight);
-            console.log('scrollWidth:', graph.scrollWidth);
-            console.log('scrollHeight:', graph.scrollHeight);
-            
-            const rect = graph.getBoundingClientRect();
-            console.log('BoundingRect:', {
-              width: rect.width,
-              height: rect.height,
-              top: rect.top,
-              left: rect.left
-            });
-            
-            const styles = window.getComputedStyle(graph);
-            console.log('Computed Styles:', {
-              width: styles.width,
-              height: styles.height,
-              paddingTop: styles.paddingTop,
-              paddingBottom: styles.paddingBottom,
-              boxSizing: styles.boxSizing,
-              overflow: styles.overflow
-            });
-          }
+          // 移除詳細的 console.log 輸出，避免每秒輸出大量資訊
           
           const screenWidthEl = document.getElementById("screenWidth");
           const screenHeightEl = document.getElementById("screenHeight");
