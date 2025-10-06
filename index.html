@@ -69,6 +69,10 @@
         text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         letter-spacing: 1px;
         font-family: 'Times New Roman', serif;
+        background: #faf8f3;
+        padding: 10px 15px;
+        border-radius: 5px;
+        display: inline-block;
       }
       
       .title-section {
@@ -82,14 +86,19 @@
         font-weight: normal;
         font-style: italic;
         margin-top: 5px;
+        background: #faf8f3;
+        padding: 5px 10px;
+        border-radius: 3px;
+        display: inline-block;
       }
       #graph { 
         position: fixed; /* 固定定位，全螢幕覆蓋 */
         top: 0;
         left: 0;
         width: 100vw;
-        height: 100vh;
-        overflow: hidden; /* 完全隱藏捲軸 */
+        height: 100vh !important; /* 強制設定高度 */
+        max-height: 100vh !important; /* 限制最大高度 */
+        overflow: hidden !important; /* 強制隱藏捲軸 */
         border: none; /* 移除邊框 */
         background: #faf8f3; 
         cursor: grab;
@@ -116,6 +125,8 @@
         display: inline-block; 
         position: relative;
         transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        /* 移除尺寸限制，讓 SVG 可以完整顯示 */
+        overflow: visible; /* 允許內容溢出，由父容器控制 */
       }
       
       #zoomInner.dragging {
@@ -939,7 +950,8 @@
     <!-- Debug 資訊顯示 -->
     <div class="debug-info" id="debugInfo">
       <div>螢幕: <span id="screenWidth">-</span> x <span id="screenHeight">-</span></div>
-      <div>容器: <span id="containerWidth">-</span> x <span id="containerHeight">-</span></div>
+      <div>容器 (client): <span id="containerWidth">-</span> x <span id="containerHeight">-</span></div>
+      <div>容器 (scroll): <span id="scrollWidth">-</span> x <span id="scrollHeight">-</span></div>
       <div>SVG: <span id="svgWidth">-</span> x <span id="svgHeight">-</span></div>
     </div>
 
@@ -1451,17 +1463,12 @@
             fontLabel.textContent = `${state.origFontSize}px`;
           }
 
-          // 設置原始尺寸，但限制在合理範圍內
-          const maxReasonableWidth = window.innerWidth * 3; // 最大寬度為螢幕寬度的3倍
-          const maxReasonableHeight = window.innerHeight * 3; // 最大高度為螢幕高度的3倍
+          // 不設定固定尺寸，讓 zoomInner 根據內容自動調整
+          // 移除固定尺寸設定，避免雙重縮放問題
+          zoomInner.style.width = "auto";
+          zoomInner.style.height = "auto";
           
-          const finalWidth = Math.min(origW, maxReasonableWidth);
-          const finalHeight = Math.min(origH, maxReasonableHeight);
-          
-          zoomInner.style.width = finalWidth + "px";
-          zoomInner.style.height = finalHeight + "px";
-          
-          console.log(`原始尺寸: ${origW}x${origH}, 限制後尺寸: ${finalWidth}x${finalHeight}`);
+          console.log(`原始尺寸: ${origW}x${origH}, zoomInner 使用自動尺寸`);
 
           svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
           if (!svg.getAttribute("viewBox")) svg.setAttribute("viewBox", `0 0 ${origW} ${origH}`);
@@ -2854,10 +2861,41 @@
           const svgWidth = zoomInner ? zoomInner.clientWidth : 0;
           const svgHeight = zoomInner ? zoomInner.clientHeight : 0;
           
+          // 詳細調試：檢查容器的各種尺寸屬性
+          if (graph) {
+            console.log('=== 容器尺寸詳細資訊 ===');
+            console.log('clientWidth:', graph.clientWidth);
+            console.log('clientHeight:', graph.clientHeight);
+            console.log('offsetWidth:', graph.offsetWidth);
+            console.log('offsetHeight:', graph.offsetHeight);
+            console.log('scrollWidth:', graph.scrollWidth);
+            console.log('scrollHeight:', graph.scrollHeight);
+            
+            const rect = graph.getBoundingClientRect();
+            console.log('BoundingRect:', {
+              width: rect.width,
+              height: rect.height,
+              top: rect.top,
+              left: rect.left
+            });
+            
+            const styles = window.getComputedStyle(graph);
+            console.log('Computed Styles:', {
+              width: styles.width,
+              height: styles.height,
+              paddingTop: styles.paddingTop,
+              paddingBottom: styles.paddingBottom,
+              boxSizing: styles.boxSizing,
+              overflow: styles.overflow
+            });
+          }
+          
           const screenWidthEl = document.getElementById("screenWidth");
           const screenHeightEl = document.getElementById("screenHeight");
           const containerWidthEl = document.getElementById("containerWidth");
           const containerHeightEl = document.getElementById("containerHeight");
+          const scrollWidthEl = document.getElementById("scrollWidth");
+          const scrollHeightEl = document.getElementById("scrollHeight");
           const svgWidthEl = document.getElementById("svgWidth");
           const svgHeightEl = document.getElementById("svgHeight");
           
@@ -2865,6 +2903,8 @@
           if (screenHeightEl) screenHeightEl.textContent = screenHeight + "px";
           if (containerWidthEl) containerWidthEl.textContent = containerWidth + "px";
           if (containerHeightEl) containerHeightEl.textContent = containerHeight + "px";
+          if (scrollWidthEl) scrollWidthEl.textContent = (graph ? graph.scrollWidth : 0) + "px";
+          if (scrollHeightEl) scrollHeightEl.textContent = (graph ? graph.scrollHeight : 0) + "px";
           if (svgWidthEl) svgWidthEl.textContent = svgWidth + "px";
           if (svgHeightEl) svgHeightEl.textContent = svgHeight + "px";
         } catch (e) {
