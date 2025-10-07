@@ -1894,31 +1894,40 @@
           state.currentTranslateY = 0;
           console.log('重設位置到原點');
           
-          // 取得節點的位置
+          // 取得節點在 SVG 中的位置
           const bbox = targetNodeElement.getBBox();
           const nodeX = bbox.x + bbox.width / 2;
           const nodeY = bbox.y + bbox.height / 2;
           console.log('節點 BBox:', bbox);
-          console.log('節點中心位置:', nodeX, nodeY);
+          console.log('節點在 SVG 中的中心位置:', nodeX, nodeY);
           
           // 計算縮放比例
           const scale = state.scalePct / 100;
           console.log('縮放比例:', scale);
           
-          // 計算節點在縮放後的位置
+          // 計算節點在縮放後的位置（相對於 zoomInner 原點）
           const scaledNodeX = nodeX * scale;
           const scaledNodeY = nodeY * scale;
-          console.log('縮放後節點位置:', scaledNodeX, scaledNodeY);
+          console.log('縮放後節點位置（相對於 zoomInner）:', scaledNodeX, scaledNodeY);
+          
+          // 計算容器中心位置
+          const containerCenterX = containerWidth / 2;
+          const containerCenterY = containerHeight / 2;
+          console.log('容器中心:', containerCenterX, containerCenterY);
           
           // 計算需要移動的距離（讓節點置中）
-          const moveX = (containerWidth / 2) - scaledNodeX;
-          const moveY = (containerHeight / 2) - scaledNodeY;
-          console.log('容器中心:', containerWidth / 2, containerHeight / 2);
+          // 關鍵：我們需要將節點移動到容器中心
+          // 如果節點在 (scaledNodeX, scaledNodeY)，要讓它到 (containerCenterX, containerCenterY)
+          // 那麼 zoomInner 需要移動：容器中心 - 節點位置
+          const moveX = containerCenterX - scaledNodeX;
+          const moveY = containerCenterY - scaledNodeY;
           console.log('需要移動的距離:', moveX, moveY);
+          console.log('節點目標位置:', containerCenterX, containerCenterY);
+          console.log('節點當前位置:', scaledNodeX, scaledNodeY);
           
           // 限制移動範圍，防止地圖跑到螢幕外
-          const maxMoveX = containerWidth * 0.9;
-          const maxMoveY = containerHeight * 0.9;
+          const maxMoveX = containerWidth * 1.9;
+          const maxMoveY = containerHeight * 1.9;
           console.log('移動限制:', maxMoveX, maxMoveY);
           
           state.currentTranslateX = Math.max(-maxMoveX, Math.min(maxMoveX, moveX));
@@ -1932,6 +1941,30 @@
           zoomRange.value = String(state.scalePct);
           
           console.log('✅ 節點置中完成');
+          
+          // 驗證最終位置
+          setTimeout(() => {
+            const finalBbox = targetNodeElement.getBBox();
+            const finalNodeX = finalBbox.x + finalBbox.width / 2;
+            const finalNodeY = finalBbox.y + finalBbox.height / 2;
+            const finalScale = state.scalePct / 100;
+            
+            // 計算節點在螢幕上的實際位置
+            // 節點在 SVG 中的位置 + translate + 縮放
+            const finalScreenX = (finalNodeX * finalScale) + state.currentTranslateX;
+            const finalScreenY = (finalNodeY * finalScale) + state.currentTranslateY;
+            
+            const finalContainerCenterX = graph.clientWidth / 2;
+            const finalContainerCenterY = graph.clientHeight / 2;
+            
+            console.log('=== 置中後驗證 ===');
+            console.log('節點在 SVG 中的位置:', finalNodeX, finalNodeY);
+            console.log('節點在螢幕上的實際位置:', finalScreenX, finalScreenY);
+            console.log('容器中心:', finalContainerCenterX, finalContainerCenterY);
+            console.log('偏差:', Math.abs(finalScreenX - finalContainerCenterX), Math.abs(finalScreenY - finalContainerCenterY));
+            console.log('當前 translate:', state.currentTranslateX, state.currentTranslateY);
+          }, 100);
+          
           return true;
         } else {
           console.log('❌ 找不到節點元素');
@@ -1975,15 +2008,28 @@
         const scaledWidth = state.origW ? state.origW * scale : 0;
         const scaledHeight = state.origH ? state.origH * scale : 0;
         
-        // 計算合理的拖曳邊界
-        const maxTranslateX = Math.max(0, (scaledWidth - containerWidth) / 2 + containerWidth * 0.5);
-        const minTranslateX = Math.min(0, -(scaledWidth - containerWidth) / 2 - containerWidth * 0.5);
-        const maxTranslateY = Math.max(0, (scaledHeight - containerHeight) / 2 + containerHeight * 0.5);
-        const minTranslateY = Math.min(0, -(scaledHeight - containerHeight) / 2 - containerHeight * 0.5);
+        // 暫時禁用邊界限制，讓置中功能正常工作
+        console.log('原始位移:', state.currentTranslateX, state.currentTranslateY);
+        console.log('縮放後地圖尺寸:', scaledWidth, scaledHeight);
+        console.log('容器尺寸:', containerWidth, containerHeight);
+        
+        // 計算合理的拖曳邊界（暫時放寬限制）
+        const maxTranslateX = Math.max(0, (scaledWidth - containerWidth) / 2 + containerWidth * 2);
+        const minTranslateX = Math.min(0, -(scaledWidth - containerWidth) / 2 - containerWidth * 2);
+        const maxTranslateY = Math.max(0, (scaledHeight - containerHeight) / 2 + containerHeight * 2);
+        const minTranslateY = Math.min(0, -(scaledHeight - containerHeight) / 2 - containerHeight * 2);
+        
+        console.log('邊界限制:', {maxTranslateX, minTranslateX, maxTranslateY, minTranslateY});
         
         // 應用邊界限制
+        const originalX = state.currentTranslateX;
+        const originalY = state.currentTranslateY;
         state.currentTranslateX = Math.max(minTranslateX, Math.min(maxTranslateX, state.currentTranslateX));
         state.currentTranslateY = Math.max(minTranslateY, Math.min(maxTranslateY, state.currentTranslateY));
+        
+        if (originalX !== state.currentTranslateX || originalY !== state.currentTranslateY) {
+          console.log('⚠️ 位移被邊界限制:', {originalX, originalY, finalX: state.currentTranslateX, finalY: state.currentTranslateY});
+        }
         
         zoomInner.style.transform = `translate(${state.currentTranslateX}px, ${state.currentTranslateY}px) scale(${scale})`;
       }
